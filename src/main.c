@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+// #include <time.h>
 
 int main(int argc, char** argv) {
     char* key_event_handler = NULL;
@@ -27,6 +28,22 @@ int main(int argc, char** argv) {
         perror("Error opening key event file");
         return errno;
     }
-    // TODO: Actually do stuff with the file
+    while (1) {
+        short int event_info[4];
+        fseek(key_event_file, 8, SEEK_CUR);
+        size_t bytes_read = fread(event_info, 2, 4, key_event_file) * 2;
+        // Enter key is code 28
+        // We need event type 1
+        // This does not do what it should yet, it is just for testing
+        if (bytes_read == 8)
+            printf(
+                    "type: %hi, code: %hi, value: %i\n",
+                    event_info[0], event_info[1], (event_info[2] << 8) + event_info[3]);
+        else
+            fprintf(
+                    stderr,
+                    "Error reading event: expected 8 bytes, recieved %lu\n",
+                    bytes_read);
+    }
     fclose(key_event_file);
 }
