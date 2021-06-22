@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
                     "type: %hu, code: %hu, value: %u\n",
                     event_info[0],
                     event_info[1],
-                    event_info[2] + ((unsigned int) event_info[3] << 8));
+                    event_info[2] + (event_info[3] << 8));
         } else
             fprintf(
                     stderr,
