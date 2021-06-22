@@ -1,10 +1,14 @@
 #include "getKeyEventFile.h"
 #include <errno.h>
+#include <linux/input-event-codes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 
 int main(int argc, char** argv) {
+    int return_value = 0;
+
     char* key_event_handler = NULL;
     for (int i = 2; i < argc; i++)
         if (!strcmp(argv[i - 1], "-k")) {
@@ -28,26 +32,35 @@ int main(int argc, char** argv) {
         perror("Error opening key event file");
         return errno;
     }
+
     while (1) {
         unsigned short event_info[4];
         // Skip past date information
         fseek(key_event_file, sizeof(struct timeval), SEEK_CUR);
 
-        size_t bytes_read = fread(event_info, 2, 4, key_event_file) * 2;
-        // Enter key is code 28
-        // We need event type 1
-        // This does not do what it should yet, it is just for testing
+        const size_t bytes_read = fread(event_info, 2, 4, key_event_file) * 2;
+        // This does not do what it should yet, it just exits the loop instead
         if (bytes_read == 8) {
-            printf(
-                    "type: %hu, code: %hu, value: %u\n",
-                    event_info[0],
-                    event_info[1],
-                    event_info[2] + (event_info[3] << 8));
-        } else
+            static bool key_pressed = false;
+            // type is event_info[0] & code is event_info[1]
+            if (event_info[0] == EV_KEY && event_info[1] == KEY_ENTER) {
+                // event_info[2] stores all binary below 256 for value
+                // It is the only part we care about because value from key event is
+                // always less than 256 (can only be 0, 1, or 2)
+                if (event_info[2])
+                    key_pressed = true;
+                else if (key_pressed)
+                    break;
+            }
+        } else {
             fprintf(
                     stderr,
-                    "Error reading event: expected 8 bytes, recieved %lu\n",
+                    "Error reading event: expected 6 bytes, recieved %lu\n",
                     bytes_read);
+            return_value = 1;
+            break;
+        }
     }
     fclose(key_event_file);
+    return return_value;
 }
