@@ -2,9 +2,5 @@
 
 pkgs.mkShell {
   buildInputs = [ pkgs.gcc ];
-  shellHook = ''
-    echo Building speedtime...
-    ./build.sh
-    exit
-  '';
+  shellHook = "./build.sh";
 }
