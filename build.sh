@@ -1,13 +1,16 @@
-#! /usr/bin/env bash
-
 err() {
     echo Errors during build
-    exit
+    exit 1
 }
 
-echo Building speedtime...
+# For nix-build
+[ -z $stdenv ] || source $stdenv/setup
+[ -z $src ] && src="./src" || cp -r $src ./
+[ -z $out ] && out="./result"
 
-for csrc in src/*.c; do
-    gcc -Wall -Wextra -Werror -c $csrc -o build/${csrc:4}.o || err
+mkdir -p build $out/bin
+
+for csrc in $src/*.c; do
+    gcc -Wall -Wextra -Werror -c $csrc -o build/${csrc:$(( ${#src} + 1 ))}.o || err
 done
-gcc build/*.o -o build/result && echo Executable is at build/result || err
+gcc build/*.o -o $out/bin/speedtime || err
