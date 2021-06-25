@@ -48,7 +48,6 @@ int main(int argc, char** argv) {
             // all other values mean the key is pressed
             if (event_info[0] == EV_KEY && event_info[1] == KEY_ENTER && event_info[2])
                 break;
-            }
         } else {
             fprintf(
                     stderr,
