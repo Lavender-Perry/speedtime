@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
         return errno;
     }
 
-    while (1) {
+    while (true) {
         unsigned short event_info[4];
         // Skip past date information
         fseek(key_event_file, sizeof(struct timeval), SEEK_CUR);
@@ -41,16 +41,13 @@ int main(int argc, char** argv) {
         const size_t bytes_read = fread(event_info, 2, 4, key_event_file) * 2;
         // This does not do what it should yet, it just exits the loop instead
         if (bytes_read == 8) {
-            static bool key_pressed = false;
             // type is event_info[0] & code is event_info[1]
-            if (event_info[0] == EV_KEY && event_info[1] == KEY_ENTER) {
-                // event_info[2] stores all binary below 256 for value
-                // It is the only part we care about because value from key event is
-                // always less than 256 (can only be 0, 1, or 2)
-                if (event_info[2])
-                    key_pressed = true;
-                else if (key_pressed)
-                    break;
+            // event_info[2] stores all binary below 256 for value
+            // It is the only part we care about because value from key event is
+            // always less than 256 (can only be 0, 1, or 2).  O signals key release,
+            // all other values mean the key is pressed
+            if (event_info[0] == EV_KEY && event_info[1] == KEY_ENTER && event_info[2])
+                break;
             }
         } else {
             fprintf(
