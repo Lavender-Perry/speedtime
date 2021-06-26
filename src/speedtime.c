@@ -2,12 +2,14 @@
 #include <linux/input-event-codes.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "speedtime.h"
 
-int main(const int argc, const char** argv) {
+int main(const int argc, char** argv) {
     /* Find & open the key event handler file,
      * storing the file pointer in key_event_file */
 
@@ -21,9 +23,9 @@ int main(const int argc, const char** argv) {
     if (!key_event_path) { // No custom file path given
         key_event_path = getKeyEventFile();
         if (!key_event_path) {
-            fputs(stderr, "Error finding the keyboard event file.\n"
+            fputs("Error finding the keyboard event file.\n"
                     "Please specify the file by adding the arguments "
-                    "\"-k /path/to/event_file\"\n");
+                    "\"-k /path/to/event_file\"\n", stderr);
             return errno ? errno : EXIT_FAILURE;
         }
     }
