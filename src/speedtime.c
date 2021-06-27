@@ -95,10 +95,12 @@ int main(const int argc, char** argv) {
                     EVENT_LOOP_ERR_EXIT(CLOCK_ERR_STR)
                 }
                 if (start_clock) {
+                    // Print the time & stop the timer
                     print_clock_time(keypress_clock - start_clock);
-                    puts_no_newline("\n0:00.00");
-                    start_clock = 0;
+                    puts(""); // Print newline
+                    break;
                 } else
+                    // Start the timer
                     start_clock = keypress_clock;
             }
         } else if (start_clock) { /* Update the time if the timer is going */
