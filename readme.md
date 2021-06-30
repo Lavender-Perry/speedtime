@@ -6,4 +6,4 @@ can start / stop the time without having the window focused.
 ## Building
 If you have Nix installed, you can run `nix-build` in the directory of this repo.
 ## Future Goals
-* Features for speedrunning
+Check open issues labeled with "future goal"
