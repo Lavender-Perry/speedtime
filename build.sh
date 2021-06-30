@@ -13,4 +13,4 @@ mkdir -p build $out/bin
 for csrc in $src/*.c; do
     gcc -Wall -Wextra -Werror -c $csrc -o build/${csrc:$(( ${#src} + 1 ))}.o || err
 done
-gcc build/*.o -o $out/bin/speedtime || err
+gcc -pthread build/*.o -o $out/bin/speedtime || err

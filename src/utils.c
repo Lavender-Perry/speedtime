@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include "utils.h"
 
-void puts_no_newline(const char* str) {
+/* puts() without a newline at the end */
+void putsNoNewline(const char* str) {
     fputs(str, stdout);
     fflush(stdout);
 }
