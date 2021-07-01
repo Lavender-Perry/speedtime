@@ -10,9 +10,6 @@
 #include "timing.h"
 #include "utils.h"
 
-pthread_mutex_t timer_mtx = PTHREAD_MUTEX_INITIALIZER;
-bool do_timer = true;
-
 int main(const int argc, char** argv) {
     /* Find & open the key event handler file,
      * storing the file pointer in key_event_fp. */
@@ -72,16 +69,18 @@ time_err:
 
     /* Start the timer */
     printTime(NULL, current_time); // Give start time to printTime()
+
     pthread_t timer_thread_id;
-    if (pthread_create(
-                &timer_thread_id,
-                NULL,
-                timer,
-                malloc(sizeof(struct timespec))
-            )) {
+    pthread_mutex_t thread_mtx = PTHREAD_MUTEX_INITIALIZER;
+    struct threadInfo timer_arg = {
+        .do_thread = true,
+        .mtx_ptr = &thread_mtx,
+    };
+    if (pthread_create(&timer_thread_id, NULL, timer, &timer_arg)) {
         fputs("Error creating timer thread\n", stderr);
         goto program_end;
     }
+
     while (true) {
         /* Check if the enter key is pressed & stop the timer if it is */
         enterPressed = enterKeyPressed(key_event_fp, current_time);
@@ -90,9 +89,9 @@ time_err:
         if (current_time->tv_sec == 0)
             goto time_err;
         if (enterPressed) {
-            pthread_mutex_lock(&timer_mtx);
-            do_timer = false;
-            pthread_mutex_unlock(&timer_mtx);
+            pthread_mutex_lock(timer_arg.mtx_ptr);
+            timer_arg.do_thread = false;
+            pthread_mutex_unlock(timer_arg.mtx_ptr);
             if (pthread_join(timer_thread_id, NULL) == -1) {
                 perror("pthread_join");
                 return_value = errno;
@@ -102,6 +101,7 @@ time_err:
             break;
         }
     }
+
 program_end:
     free(current_time);
     fclose(key_event_fp);

@@ -5,8 +5,6 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "keyboard_events.h"
-
 /* Autodetects & returns the path of the file that stores keyboard events */
 char* getKeyEventFile() {
     char* return_value = NULL;
