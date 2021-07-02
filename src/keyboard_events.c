@@ -1,4 +1,5 @@
 #include <linux/input-event-codes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -64,9 +65,10 @@ end_of_loop:
     return return_value;
 }
 
-/* Checks & returns when the enter key was pressed, putting time in when
- * Returns -1 on error reading event, sets tv_sec value to 0 in when
- * on error reading time */
+/* Checks & returns when the enter key was pressed, putting time in when if key was
+ * Returns: if the key was pressed on no error
+ *          -1 on error reading file
+ *          -2 on error getting time */
 int enterKeyPressed(FILE* keyboard_event_fp, struct timespec* when) {
     // event_info[0]: type, event_info[1]: code,
     // event_info[2]: value (lower byte), event_info[3]: value (upper byte)
@@ -77,8 +79,11 @@ int enterKeyPressed(FILE* keyboard_event_fp, struct timespec* when) {
 
     if (fread(event_info, 2, 4, keyboard_event_fp) != 4)
         return -1;
-    if (when && clock_gettime(CLOCK_TAI, when) == -1) // Does not set when if it's NULL
-        when->tv_sec = 0;
     // No need to check event_info[3], it is always 0 for key inputs
-    return (event_info[0] == EV_KEY && event_info[1] == KEY_ENTER && event_info[2]);
+    if (event_info[0] == EV_KEY && event_info[1] == KEY_ENTER && event_info[2]) {
+        if (when && clock_gettime(CLOCK_TAI, when) == -1)
+            return -2;
+        return true;
+    } else
+        return false;
 }

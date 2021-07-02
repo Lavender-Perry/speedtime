@@ -53,18 +53,18 @@ int main(const int argc, char** argv) {
     int enterPressed = 0;
     while (!enterPressed) {
         enterPressed = enterKeyPressed(key_event_fp, current_time);
-        if (enterPressed == -1) {
-event_read_err:
-            fputs("Error reading keyboard event\n", stderr);
-            return_value = EXIT_FAILURE;
-            goto program_end;
+        switch (enterPressed) {
+            case -1:
+                fputs("Error reading keyboard event\n", stderr);
+                return_value = EXIT_FAILURE;
+                goto program_end;
+            case -2:
+                perror("clock_gettime");
+                return_value = errno;
+                goto program_end;
+            default:
+                break;
         }
-    }
-    if (current_time->tv_sec == 0) {
-time_err:
-        perror("clock_gettime");
-        return_value = errno;
-        goto program_end;
     }
 
     /* Start the timer */
@@ -84,22 +84,32 @@ time_err:
     while (true) {
         /* Check if the enter key is pressed & stop the timer if it is */
         enterPressed = enterKeyPressed(key_event_fp, current_time);
-        if (enterPressed == -1)
-            goto event_read_err;
-        if (current_time->tv_sec == 0)
-            goto time_err;
-        if (enterPressed) {
-            pthread_mutex_lock(timer_arg.mtx_ptr);
-            timer_arg.do_thread = false;
-            pthread_mutex_unlock(timer_arg.mtx_ptr);
-            if (pthread_join(timer_thread_id, NULL) == -1) {
-                perror("pthread_join");
+        switch (enterPressed) {
+            case -1:
+                fputs("Error reading keyboard event\n", stderr);
+                return_value = EXIT_FAILURE;
+                break;
+            case -2:
+                perror("clock_gettime");
                 return_value = errno;
-            }
-            printTime(current_time, NULL);
-            puts(""); // Print newline
-            break;
+                break;
+            case false:
+                continue;
+            default:
+                break;
         }
+        // This will not run if enter key was not pressed & there are no errors
+        pthread_mutex_lock(timer_arg.mtx_ptr);
+        timer_arg.do_thread = false;
+        pthread_mutex_unlock(timer_arg.mtx_ptr);
+        if (pthread_join(timer_thread_id, NULL) == -1) {
+            perror("pthread_join");
+            return_value = errno;
+        }
+        if (enterPressed != -2) // Don't print time if there was a time error
+            printTime(current_time, NULL);
+        puts(""); // Print newline
+        break;
     }
 
 program_end:
