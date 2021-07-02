@@ -6,9 +6,11 @@
 #include <string.h>
 #include <time.h>
 
+#include "structs.h"
+
 #include "keyboard_events.h"
 #include "timing.h"
-#include "utils.h"
+
 
 int main(const int argc, char** argv) {
     /* Find & open the key event handler file,
@@ -47,7 +49,10 @@ int main(const int argc, char** argv) {
         free(key_event_fp);
         return errno;
     }
-    putsNoNewline("0:00.00");
+
+    // Print with no newline
+    fputs("0:00.00", stdout);
+    fflush(stdout);
 
     /* Wait until enter key pressed to start the timer */
     int enterPressed = 0;
