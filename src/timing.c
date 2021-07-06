@@ -5,8 +5,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "structs.h"
-
 /* Prints elapsed time using the current timespec & starting timespec, after start_time
  * is given.
  * First call: start_time must be starting time, time must be NULL

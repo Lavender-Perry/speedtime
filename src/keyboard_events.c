@@ -64,11 +64,8 @@ end_of_loop:
     return return_value;
 }
 
-/* After keyboard_event_fp given: checks when the enter key was pressed, updates when
- * First call: keyboard_event_fp file pointer to read events from, when NULL
- * Other calls: when pointer to put time into, keyboard_event_fp ignored
+/* Checks when the enter key was pressed, updates when
  * Returns:
- *     0 on first call, or
  *     -2 on error getting time, or
  *     -1 on error getting event, or
  *     if the key was pressed */
