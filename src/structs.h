@@ -3,7 +3,7 @@
 
 struct threadInfo {
     bool do_thread;
-    pthread_mutex_t* mtx_ptr;
+    int err_code;
 };
 
 #endif // STRUCTS_H

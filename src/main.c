@@ -6,8 +6,6 @@
 #include <string.h>
 #include <time.h>
 
-#include "structs.h"
-
 #include "keyboard_events.h"
 #include "timing.h"
 
@@ -55,20 +53,16 @@ int main(const int argc, char** argv) {
     fflush(stdout);
 
     /* Wait until enter key pressed to start the timer */
-    int enterPressed = 0;
+    const char* key_err_msg = "Error getting key press info";
+    // Give key_event_fp to function, enterPressed will be false
+    int enterPressed = false;
+
     while (!enterPressed) {
         enterPressed = enterKeyPressed(key_event_fp, current_time);
-        switch (enterPressed) {
-            case -1:
-                fputs("Error reading keyboard event\n", stderr);
-                return_value = EXIT_FAILURE;
-                goto program_end;
-            case -2:
-                perror("clock_gettime");
-                return_value = errno;
-                goto program_end;
-            default:
-                break;
+        if (enterPressed < 0) {
+            perror(key_err_msg);
+            return_value = errno;
+            goto program_end;
         }
     }
 
@@ -76,46 +70,39 @@ int main(const int argc, char** argv) {
     printTime(NULL, current_time); // Give start time to printTime()
 
     pthread_t timer_thread_id;
-    pthread_mutex_t thread_mtx = PTHREAD_MUTEX_INITIALIZER;
-    struct threadInfo timer_arg = {
-        .do_thread = true,
-        .mtx_ptr = &thread_mtx,
-    };
-    if (pthread_create(&timer_thread_id, NULL, timer, &timer_arg)) {
+    bool do_thread = true;
+    if (pthread_create(&timer_thread_id, NULL, timer, &do_thread)) {
         fputs("Error creating timer thread\n", stderr);
         goto program_end;
     }
 
-    while (true) {
-        /* Check if the enter key is pressed & stop the timer if it is */
-        enterPressed = enterKeyPressed(key_event_fp, current_time);
-        switch (enterPressed) {
-            case -1:
-                fputs("Error reading keyboard event\n", stderr);
-                return_value = EXIT_FAILURE;
-                break;
-            case -2:
-                perror("clock_gettime");
-                return_value = errno;
-                break;
-            case false:
-                continue;
-            default:
-                break;
-        }
-        // This will not run if enter key was not pressed & there are no errors
-        pthread_mutex_lock(timer_arg.mtx_ptr);
-        timer_arg.do_thread = false;
-        pthread_mutex_unlock(timer_arg.mtx_ptr);
-        if (pthread_join(timer_thread_id, NULL) == -1) {
-            perror("pthread_join");
+    /* Wait until enter key pressed to stop the timer */
+    enterPressed = false;
+    while (!enterPressed) {
+        /* End if any timer thread errors (errors in timer thread will set errno) */
+        if (errno) {
             return_value = errno;
+            goto program_end;
         }
-        if (enterPressed != -2) // Don't print time if there was a time error
-            printTime(current_time, NULL);
-        puts(""); // Print newline
-        break;
+        /* Check if the enter key is pressed & handle errors */
+        enterPressed = enterKeyPressed(key_event_fp, current_time);
+        if (enterPressed < 0) {
+            perror(key_err_msg);
+            return_value = errno;
+            break;
+        }
     }
+    do_thread = false;
+    if (pthread_join(timer_thread_id, NULL) == -1) {
+        perror("pthread_join");
+        return_value = errno;
+    }
+    if (enterPressed != -2) // Don't print time if there was a time error
+        printTime(current_time, NULL);
+    else
+        fputs("Error getting the time that the timer was stopped at.\n"
+                "The printed time is most likely NOT accurate!", stdout);
+    puts(""); // Print newline
 
 program_end:
     free(current_time);

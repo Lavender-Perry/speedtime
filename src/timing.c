@@ -14,43 +14,38 @@
 void printTime(struct timespec* time, struct timespec* start_time) {
     static struct timespec start; // Set to *start_time on first call
 
-    if (time) {
-        const int time_nsec = (time->tv_sec - start.tv_sec) * 100
-            + (time->tv_nsec - start.tv_nsec) / 10000000;
-        printf("\r%d:%.2d.%.2d",
-                time_nsec / 6000,
-                time_nsec / 100 % 60,
-                time_nsec % 100);
-        fflush(stdout);
-    } else
+    if (!time) {
         start = *start_time;
+        return;
+    }
+
+    const int time_nsec = (time->tv_sec - start.tv_sec) * 100
+        + (time->tv_nsec - start.tv_nsec) / 10000000;
+    printf("\r%d:%.2d.%.2d",
+            time_nsec / 6000,
+            time_nsec / 100 % 60,
+            time_nsec % 100);
+    fflush(stdout);
 }
 
 /* Updates the time every centisecond
  * arg_ptr & return value must be void* for pthread */
-void* timer(void* arg_ptr) {
-    struct threadInfo* info_ptr = arg_ptr;
+void* timer(const void* arg_ptr) {
+    const bool* do_thread = arg_ptr;
     struct timespec* current_time = malloc(sizeof(struct timespec));
     if (!current_time) {
         perror("malloc");
         pthread_exit(NULL);
     }
-    pthread_mutex_lock(info_ptr->mtx_ptr);
-    while (info_ptr->do_thread) { // Mutex must be locked when checking this
-        pthread_mutex_unlock(info_ptr->mtx_ptr);
-
+    while (*do_thread) {
         usleep(10000);
         /* Get the current time & update the timer */
         if (clock_gettime(CLOCK_TAI, current_time) == -1) {
             perror("clock_gettime");
-            goto end_of_thread;
+            break;
         }
         printTime(current_time, NULL);
-
-        pthread_mutex_lock(info_ptr->mtx_ptr);
     }
-    pthread_mutex_unlock(info_ptr->mtx_ptr);
-end_of_thread:
     free(current_time);
     pthread_exit(NULL);
 }

@@ -1,5 +1,4 @@
 #include <linux/input-event-codes.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -65,25 +64,32 @@ end_of_loop:
     return return_value;
 }
 
-/* Checks & returns when the enter key was pressed, putting time in when if key was
- * Returns: if the key was pressed on no error
- *          -1 on error reading file
- *          -2 on error getting time */
+/* After keyboard_event_fp given: checks when the enter key was pressed, updates when
+ * First call: keyboard_event_fp file pointer to read events from, when NULL
+ * Other calls: when pointer to put time into, keyboard_event_fp ignored
+ * Returns:
+ *     0 on first call, or
+ *     -2 on error getting time, or
+ *     -1 on error getting event, or
+ *     if the key was pressed */
 int enterKeyPressed(FILE* keyboard_event_fp, struct timespec* when) {
+    /* Read & parse data */
+    struct timeval event_time;
     // event_info[0]: type, event_info[1]: code,
     // event_info[2]: value (lower byte), event_info[3]: value (upper byte)
     unsigned short event_info[4];
 
-    // Skip past date information
-    fseek(keyboard_event_fp, sizeof(struct timeval), SEEK_CUR);
-
-    if (fread(event_info, 2, 4, keyboard_event_fp) != 4)
+    // Read event time
+    if (fread(&event_time, sizeof(event_time), 1, keyboard_event_fp) != 1)
+        return -2;
+    // Update the time in struct timespec* when
+    when->tv_sec = event_time.tv_sec;
+    when->tv_nsec = event_time.tv_usec * 1000;
+    // Read event data
+    if (fread(event_info, sizeof(short), 4, keyboard_event_fp) != 4)
         return -1;
+
+    /* Return if the key was pressed or not */
     // No need to check event_info[3], it is always 0 for key inputs
-    if (event_info[0] == EV_KEY && event_info[1] == KEY_ENTER && event_info[2]) {
-        if (when && clock_gettime(CLOCK_TAI, when) == -1)
-            return -2;
-        return true;
-    } else
-        return false;
+    return event_info[0] == EV_KEY && event_info[1] == KEY_ENTER && event_info[2];
 }
