@@ -10,7 +10,7 @@
 #include "timing.h"
 
 
-int main(const int argc, char** argv) {
+int main(int argc, char** argv) {
     /* Find & open the key event handler file,
      * storing the file pointer in key_event_fp. */
     char* key_event_path = NULL;

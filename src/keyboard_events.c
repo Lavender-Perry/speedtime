@@ -6,7 +6,7 @@
 #include <sys/time.h>
 
 /* Autodetects & returns the path of the file that stores keyboard events */
-char* getKeyEventFile() {
+char* getKeyEventFile(void) {
     char* return_value = NULL;
 
     // /proc/bus/input/devices gives a list of devices & info about them
