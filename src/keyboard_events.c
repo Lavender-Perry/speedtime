@@ -1,3 +1,4 @@
+#include <linux/input.h>
 #include <linux/input-event-codes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,28 +66,17 @@ end_of_loop:
 }
 
 /* Checks when the enter key was pressed, updates when
- * Returns:
- *     -2 on error getting time, or
- *     -1 on error getting event, or
- *     if the key was pressed */
+ * Returns: -1 on error getting event, or if the key was pressed */
 int enterKeyPressed(FILE* keyboard_event_fp, struct timespec* when) {
     /* Read & parse data */
-    struct timeval event_time;
-    // event_info[0]: type, event_info[1]: code,
-    // event_info[2]: value (lower byte), event_info[3]: value (upper byte)
-    unsigned short event_info[4];
-
-    // Read event time
-    if (fread(&event_time, sizeof(event_time), 1, keyboard_event_fp) != 1)
-        return -2;
-    // Update the time in struct timespec* when
-    when->tv_sec = event_time.tv_sec;
-    when->tv_nsec = event_time.tv_usec * 1000;
+    struct input_event event;
+    
     // Read event data
-    if (fread(event_info, sizeof(short), 4, keyboard_event_fp) != 4)
+    if (fread(&event, sizeof(event), 1, keyboard_event_fp) != 1)
         return -1;
-
-    /* Return if the key was pressed or not */
-    // No need to check event_info[3], it is always 0 for key inputs
-    return event_info[0] == EV_KEY && event_info[1] == KEY_ENTER && event_info[2];
+    // Update the time in struct timespec* when
+    when->tv_sec = event.time.tv_sec;
+    when->tv_nsec = event.time.tv_usec * 1000;
+    // Return if the key was pressed or not
+    return event.type == EV_KEY && event.code == KEY_ENTER && event.value;
 }

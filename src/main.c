@@ -9,7 +9,6 @@
 #include "keyboard_events.h"
 #include "timing.h"
 
-
 int main(int argc, char** argv) {
     /* Find & open the key event handler file,
      * storing the file pointer in key_event_fp. */
@@ -59,7 +58,7 @@ int main(int argc, char** argv) {
 
     while (!enterPressed) {
         enterPressed = enterKeyPressed(key_event_fp, current_time);
-        if (enterPressed < 0) {
+        if (enterPressed == -1) {
             perror(key_err_msg);
             return_value = errno;
             goto program_end;
@@ -86,7 +85,7 @@ int main(int argc, char** argv) {
         }
         /* Check if the enter key is pressed & handle errors */
         enterPressed = enterKeyPressed(key_event_fp, current_time);
-        if (enterPressed < 0) {
+        if (enterPressed == -1) {
             perror(key_err_msg);
             return_value = errno;
             break;
@@ -97,7 +96,7 @@ int main(int argc, char** argv) {
         perror("pthread_join");
         return_value = errno;
     }
-    if (enterPressed != -2) // Don't print time if there was a time error
+    if (enterPressed != -1) // Don't print time if there was a time error
         printTime(current_time, NULL);
     else
         fputs("Error getting the time that the timer was stopped at.\n"
