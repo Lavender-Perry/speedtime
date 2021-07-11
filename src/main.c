@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     }
 
     // Print with no newline
-    fputs("0:00.00", stdout);
+    fputs("0:00", stdout);
     fflush(stdout);
 
     /* Wait until enter key pressed to start the timer */
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
     }
 
     /* Start the timer */
-    printTime(NULL, current_time); // Give start time to printTime()
+    printTime(NULL, current_time, false); // Give start time to printTime()
 
     pthread_t timer_thread_id;
     bool do_thread = true;
@@ -96,12 +96,10 @@ int main(int argc, char** argv) {
         perror("pthread_join");
         return_value = errno;
     }
-    if (enterPressed != -1) // Don't print time if there was a time error
-        printTime(current_time, NULL);
-    else
-        fputs("Error getting the time that the timer was stopped at.\n"
-                "The printed time is most likely NOT accurate!", stdout);
+    printTime(current_time, NULL, true);
     puts(""); // Print newline
+    if (return_value)
+        puts("The printed time is most likely NOT accurate!");
 
 program_end:
     free(current_time);
