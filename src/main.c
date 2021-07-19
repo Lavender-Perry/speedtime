@@ -1,3 +1,4 @@
+#include <asm/types.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -5,27 +6,44 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
+#include "user/config.h"
 #include "keyboard_events.h"
 #include "timing.h"
 
 int main(int argc, char** argv) {
-    /* Find & open the key event handler file,
-     * storing the file pointer in key_event_fp. */
+    /* Variables that could be set by argument parsing */
+    __u16 toggle_key = DEFAULT_TOGGLE_KEY;
     char* key_event_path = NULL;
-    bool free_key_event_path = false;
-    // Set key_event_path to a custom file path if one is given
-    for (int i = 2; i < argc; i++)
-        if (!strcmp(argv[i - 1], "-k")) {
-            key_event_path = argv[i];
-            break;
+
+    /* Argument parsing */
+    int opt;
+    while ((opt = getopt(argc, argv, ":f:k:")) != -1)
+        switch (opt) {
+            case 'f':
+                key_event_path = optarg;
+                break;
+            case 'k':
+                toggle_key = atoi(optarg);
+                if (!toggle_key) {
+                    fputs("Invalid key code specified, using default key\n", stderr);
+                    toggle_key = DEFAULT_TOGGLE_KEY;
+                }
+                break;
+            case ':':
+                fprintf(stderr, "Option %c requires an argument\n", optopt);
+            default:
+                break;
         }
+
+    bool free_key_event_path = false;
     if (!key_event_path) { // No custom file path given
         key_event_path = getKeyEventFile();
         if (!key_event_path) {
             fputs("Error finding the keyboard event file.\n"
                     "Please specify the file by adding the arguments "
-                    "\"-k /path/to/event_file\"\n", stderr);
+                    "\"-f /path/to/event_file\"\n", stderr);
             return errno ? errno : EXIT_FAILURE;
         }
         free_key_event_path = true;
@@ -53,12 +71,11 @@ int main(int argc, char** argv) {
 
     /* Wait until enter key pressed to start the timer */
     const char* key_err_msg = "Error getting key press info";
-    // Give key_event_fp to function, enterPressed will be false
-    int enterPressed = false;
+    int toggleKeyPressed = false;
 
-    while (!enterPressed) {
-        enterPressed = enterKeyPressed(key_event_fp, current_time);
-        if (enterPressed == -1) {
+    while (!toggleKeyPressed) {
+        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, current_time);
+        if (toggleKeyPressed == -1) {
             perror(key_err_msg);
             return_value = errno;
             goto program_end;
@@ -75,17 +92,17 @@ int main(int argc, char** argv) {
         goto program_end;
     }
 
-    /* Wait until enter key pressed to stop the timer */
-    enterPressed = false;
-    while (!enterPressed) {
+    /* Wait until key pressed to stop the timer */
+    toggleKeyPressed = false;
+    while (!toggleKeyPressed) {
         /* End if any timer thread errors (errors in timer thread will set errno) */
         if (errno) {
             return_value = errno;
             goto program_end;
         }
-        /* Check if the enter key is pressed & handle errors */
-        enterPressed = enterKeyPressed(key_event_fp, current_time);
-        if (enterPressed == -1) {
+        /* Check if the key is pressed & handle errors */
+        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, current_time);
+        if (toggleKeyPressed == -1) {
             perror(key_err_msg);
             return_value = errno;
             break;

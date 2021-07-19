@@ -1,3 +1,4 @@
+#include <asm/types.h>
 #include <linux/input.h>
 #include <linux/input-event-codes.h>
 #include <stdio.h>
@@ -65,9 +66,9 @@ end_of_loop:
     return return_value;
 }
 
-/* Checks when the enter key was pressed, updates when
+/* Checks if key was pressed, updates when
  * Returns: -1 on error getting event, or if the key was pressed */
-int enterKeyPressed(FILE* keyboard_event_fp, struct timespec* when) {
+int keyPressed(__u16 key_code, FILE* keyboard_event_fp, struct timespec* when) {
     /* Read & parse data */
     struct input_event event;
     
@@ -78,5 +79,5 @@ int enterKeyPressed(FILE* keyboard_event_fp, struct timespec* when) {
     when->tv_sec = event.time.tv_sec;
     when->tv_nsec = event.time.tv_usec * 1000;
     // Return if the key was pressed or not
-    return event.type == EV_KEY && event.code == KEY_ENTER && event.value;
+    return event.type == EV_KEY && event.code == key_code && event.value;
 }
