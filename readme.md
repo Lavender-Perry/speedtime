@@ -9,5 +9,3 @@ Install a C compiler (if you are not using Nix) & run `make.sh`.
 \
 Builds that do not use GCC are untested, you may get some errors.
 If you do, please create an issue.
-## Future Goals
-Check open issues labeled with "future goal"
