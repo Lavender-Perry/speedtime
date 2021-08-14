@@ -13,19 +13,14 @@ char* getKeyEventFile(void) {
 
     // /proc/bus/input/devices gives a list of devices & info about them
     FILE* devices_list = fopen("/proc/bus/input/devices", "r");
-    if (!devices_list) {
-        perror("Error opening input device list");
-        return return_value;
-    }
+    if (!devices_list)
+        goto fopen_err;
 
-    // Value will not change.  It is not const because getline would not accept it.
     size_t bufsize = 100;
 
     char* line = malloc(bufsize);
-    if (!line) {
-        perror("Error allocating memory to read line from list of devices");
-        goto end_of_loop;
-    }
+    if (!line)
+        goto malloc_err;
 
     char* event_handler = NULL;
 
@@ -38,10 +33,9 @@ char* getKeyEventFile(void) {
                     && !strncmp(line, strcheck, checklen)) { // Device is a keyboard
                 const char* input_dir = "/dev/input/";
                 return_value = malloc(strlen(input_dir) + strlen(event_handler) + 1);
-                if (!return_value) {
-                    fputs("Error allocating memory for file path string\n", stderr);
-                    break;
-                }
+                if (!return_value)
+                    goto malloc_err;
+
                 strcpy(return_value, input_dir);
                 strcat(return_value, event_handler);
                 free(line);
@@ -61,8 +55,16 @@ char* getKeyEventFile(void) {
                 event_handler = strtok(NULL, splitter);
         }
     }
-end_of_loop:
+end:
     fclose(devices_list);
+    return return_value;
+
+malloc_err:
+    perror("malloc");
+    goto end;
+
+fopen_err:
+    perror("fopen");
     return return_value;
 }
 

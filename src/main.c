@@ -8,14 +8,16 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "user/config.h"
 #include "keyboard_events.h"
 #include "timing.h"
 
+#include "user/config.h"
+
 int main(int argc, char** argv) {
     /* Variables that could be set by argument parsing */
-    __u16 toggle_key = DEFAULT_TOGGLE_KEY;
     char* key_event_path = NULL;
+    __u16 toggle_key = DEFAULT_TOGGLE_KEY;
+    FILE* split_file;
 
     /* Argument parsing */
     int opt;
@@ -31,6 +33,12 @@ int main(int argc, char** argv) {
                     toggle_key = DEFAULT_TOGGLE_KEY;
                 }
                 break;
+            case 's':
+                if (!optarg)
+                    getSplitsFromInput();
+                else
+                    // TODO
+                break;
             case ':':
                 fprintf(stderr, "Option %c requires an argument\n", optopt);
             default:
@@ -44,7 +52,7 @@ int main(int argc, char** argv) {
             fputs("Error finding the keyboard event file.\n"
                     "Please specify the file by adding the arguments "
                     "\"-f /path/to/event_file\"\n", stderr);
-            return errno ? errno : EXIT_FAILURE;
+            return errno;
         }
         free_key_event_path = true;
     }
@@ -61,8 +69,8 @@ int main(int argc, char** argv) {
     struct timespec* current_time = malloc(sizeof(struct timespec));
     if (!current_time) {
         perror("malloc");
-        free(key_event_fp);
-        return errno;
+        return_value = errno;
+        goto end_no_free;
     }
 
     // Print with no newline
@@ -70,13 +78,11 @@ int main(int argc, char** argv) {
     fflush(stdout);
 
     /* Wait until enter key pressed to start the timer */
-    const char* key_err_msg = "Error getting key press info";
     int toggleKeyPressed = false;
 
     while (!toggleKeyPressed) {
         toggleKeyPressed = keyPressed(toggle_key, key_event_fp, current_time);
         if (toggleKeyPressed == -1) {
-            perror(key_err_msg);
             return_value = errno;
             goto program_end;
         }
@@ -103,11 +109,11 @@ int main(int argc, char** argv) {
         /* Check if the key is pressed & handle errors */
         toggleKeyPressed = keyPressed(toggle_key, key_event_fp, current_time);
         if (toggleKeyPressed == -1) {
-            perror(key_err_msg);
             return_value = errno;
             break;
         }
     }
+    /* Stop the timer */
     do_thread = false;
     if (pthread_join(timer_thread_id, NULL) == -1) {
         perror("pthread_join");
@@ -120,6 +126,7 @@ int main(int argc, char** argv) {
 
 program_end:
     free(current_time);
+end_no_free:
     fclose(key_event_fp);
     return return_value;
 }
