@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "keyboard_events.h"
+#include "splits.h"
 #include "timing.h"
 
 #include "user/config.h"
@@ -18,10 +19,15 @@ int main(int argc, char** argv) {
     char* key_event_path = NULL;
     __u16 toggle_key = DEFAULT_TOGGLE_KEY;
     FILE* split_file;
+    struct split* splits = malloc(sizeof(struct split) * MAX_SPLITS);
+    if (!splits) {
+        perror("malloc");
+        return errno;
+    }
 
     /* Argument parsing */
     int opt;
-    while ((opt = getopt(argc, argv, ":f:k:")) != -1)
+    while ((opt = getopt(argc, argv, ":f:k:s")) != -1)
         switch (opt) {
             case 'f':
                 key_event_path = optarg;
@@ -35,9 +41,14 @@ int main(int argc, char** argv) {
                 break;
             case 's':
                 if (!optarg)
-                    getSplitsFromInput();
-                else
-                    // TODO
+                    splits = getSplitsFromInput();
+                else {
+                    split_file = fopen(optarg, "rw");
+                    if (!split_file)
+                        goto fopen_err;
+                    if (!fread(splits, sizeof(struct split), MAX_SPLITS, split_file))
+                        fputs("No splits could be read from the file\n", stderr);
+                }
                 break;
             case ':':
                 fprintf(stderr, "Option %c requires an argument\n", optopt);
@@ -59,10 +70,8 @@ int main(int argc, char** argv) {
     FILE* key_event_fp = fopen(key_event_path, "r");
     if (free_key_event_path)
         free(key_event_path);
-    if (!key_event_fp) {
-        perror("fopen");
-        return errno;
-    }
+    if (!key_event_fp)
+        goto fopen_err;
 
     /* Set up for starting the timer */
     int return_value = EXIT_SUCCESS;
@@ -125,8 +134,13 @@ int main(int argc, char** argv) {
         puts("The printed time is most likely NOT accurate!");
 
 program_end:
+    free(splits);
     free(current_time);
 end_no_free:
     fclose(key_event_fp);
     return return_value;
+
+fopen_err:
+    perror("fopen");
+    return errno;
 }

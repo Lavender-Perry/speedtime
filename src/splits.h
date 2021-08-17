@@ -1,11 +1,11 @@
 #ifndef SPLITS_H
 #define SPLITS_H
 
-#include "user/config.h"
-
 struct split {
-    char name[MAX_SPLIT_LEN];
+    char* name;
     struct timespec best_time;
 };
+
+struct split* getSplitsFromInput(void);
 
 #endif // SPLITS_H

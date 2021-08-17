@@ -13,10 +13,10 @@ struct split* getSplitsFromInput(void) {
     struct split* saved_splits = NULL;
     size_t bufsize = MAX_SPLIT_LEN;
 
-    char line[bufsize];
+    char* line;
 
     const size_t split_size = sizeof(struct split);
-    while (getline(&line, &bufsize, stdin) != EOF && strcmp(line, "END")) {
+    while (getline(&line, &bufsize, stdin) != EOF && strcmp(line, "END\n")) {
         const size_t saved_splits_size = sizeof(saved_splits);
 
         saved_splits = realloc(saved_splits, saved_splits_size + split_size);
