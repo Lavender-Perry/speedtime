@@ -6,6 +6,6 @@ struct split {
     struct timespec best_time;
 };
 
-struct split* getSplitsFromInput(void);
+int getSplitsFromInput(struct split* buf);
 
 #endif // SPLITS_H

@@ -19,11 +19,8 @@ int main(int argc, char** argv) {
     char* key_event_path = NULL;
     __u16 toggle_key = DEFAULT_TOGGLE_KEY;
     FILE* split_file;
-    struct split* splits = malloc(sizeof(struct split) * MAX_SPLITS);
-    if (!splits) {
-        perror("malloc");
-        return errno;
-    }
+    int split_amount = 0;
+    struct split splits[MAX_SPLITS] = {0};
 
     /* Argument parsing */
     int opt;
@@ -41,12 +38,13 @@ int main(int argc, char** argv) {
                 break;
             case 's':
                 if (!optarg)
-                    splits = getSplitsFromInput();
+                    split_amount = getSplitsFromInput(splits);
                 else {
                     split_file = fopen(optarg, "rw");
                     if (!split_file)
                         goto fopen_err;
-                    if (!fread(splits, sizeof(struct split), MAX_SPLITS, split_file))
+                    split_amount = fread(splits, sizeof(struct split), MAX_SPLITS, split_file);
+                    if (!split_amount)
                         fputs("No splits could be read from the file\n", stderr);
                 }
                 break;
@@ -55,6 +53,10 @@ int main(int argc, char** argv) {
             default:
                 break;
         }
+
+    // TEMPORARY
+    for (int i = 0; i < split_amount; i++)
+        printf("%s\n", splits[i].name);
 
     bool free_key_event_path = false;
     if (!key_event_path) { // No custom file path given
@@ -134,7 +136,6 @@ int main(int argc, char** argv) {
         puts("The printed time is most likely NOT accurate!");
 
 program_end:
-    free(splits);
     free(current_time);
 end_no_free:
     fclose(key_event_fp);
