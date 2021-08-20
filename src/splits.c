@@ -7,11 +7,10 @@
 
 #include "user/config.h"
 
-/* Reads from stdin & puts splits in buf, returns amount of splits
+/* Reads from stdin & puts splits in buf, returns amount of splits or -1 on error
  * Stops when "END" read or on EOF */
 int getSplitsFromInput(struct split* buf) {
-    size_t bufsize = MAX_SPLIT_LEN;
-
+    size_t bufsize = 0;
     char* line;
 
     int i = 0; // Must be in this scope to return it
@@ -19,8 +18,12 @@ int getSplitsFromInput(struct split* buf) {
     while (getline(&line, &bufsize, stdin) != EOF
             && strcmp(line, "END\n") && i < MAX_SPLITS) {
         buf[i] = (struct split) {
-            .name = line, .best_time = (struct timespec) {0, 0}
+            .name = malloc(bufsize),
+            .best_time = (struct timespec) {0, 0}
         };
+        if (!buf[i].name)
+            return -1;
+        strcpy(buf[i].name, line);
         i++;
     }
 
