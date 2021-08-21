@@ -2,7 +2,7 @@
 #define SPLITS_H
 
 struct split {
-    char* name;
+    char name[1000];
     struct timespec best_time;
 };
 

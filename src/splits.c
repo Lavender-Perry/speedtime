@@ -18,7 +18,7 @@ int getSplitsFromInput(struct split* buf) {
     while (getline(&line, &bufsize, stdin) != EOF
             && strcmp(line, "END\n") && i < MAX_SPLITS) {
         buf[i] = (struct split) {
-            .name = malloc(bufsize),
+            .name = {0},
             .best_time = (struct timespec) {0, 0}
         };
         if (!buf[i].name)
