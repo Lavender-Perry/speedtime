@@ -9,18 +9,18 @@
 
 /* Autodetects & returns the path of the file that stores keyboard events */
 char* getKeyEventFile(void) {
-    char* return_value = NULL;
+    static char return_value[20] = {0};
 
     // /proc/bus/input/devices gives a list of devices & info about them
     FILE* devices_list = fopen("/proc/bus/input/devices", "r");
-    if (!devices_list)
-        goto fopen_err;
+    if (!devices_list) {
+        perror("fopen");
+        return return_value;
+    }
 
-    size_t bufsize = 100;
+    size_t bufsize = 0;
 
-    char* line = malloc(bufsize);
-    if (!line)
-        goto malloc_err;
+    char* line;
 
     char* event_handler = NULL;
 
@@ -32,13 +32,9 @@ char* getKeyEventFile(void) {
             if (strlen(line) >= checklen
                     && !strncmp(line, strcheck, checklen)) { // Device is a keyboard
                 const char* input_dir = "/dev/input/";
-                return_value = malloc(strlen(input_dir) + strlen(event_handler) + 1);
-                if (!return_value)
-                    goto malloc_err;
 
                 strcpy(return_value, input_dir);
                 strcat(return_value, event_handler);
-                free(line);
                 break;
             }
         }
@@ -55,16 +51,7 @@ char* getKeyEventFile(void) {
                 event_handler = strtok(NULL, splitter);
         }
     }
-end:
     fclose(devices_list);
-    return return_value;
-
-malloc_err:
-    perror("malloc");
-    goto end;
-
-fopen_err:
-    perror("fopen");
     return return_value;
 }
 

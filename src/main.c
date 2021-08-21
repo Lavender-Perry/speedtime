@@ -58,7 +58,6 @@ int main(int argc, char** argv) {
     for (int i = 0; i < split_amount; i++)
         printf("%s\n", splits[i].name);
 
-    bool free_key_event_path = false;
     if (!key_event_path) { // No custom file path given
         key_event_path = getKeyEventFile();
         if (!key_event_path) {
@@ -67,11 +66,8 @@ int main(int argc, char** argv) {
                     "\"-f /path/to/event_file\"\n", stderr);
             return errno;
         }
-        free_key_event_path = true;
     }
     FILE* key_event_fp = fopen(key_event_path, "r");
-    if (free_key_event_path)
-        free(key_event_path);
     if (!key_event_fp)
         goto fopen_err;
 
