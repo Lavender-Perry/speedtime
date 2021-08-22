@@ -22,7 +22,7 @@ char* getKeyEventFile(void) {
 
     char* line;
 
-    char* event_handler = NULL;
+    char* event_handler;
 
     while (getline(&line, &bufsize, devices_list) != EOF) {
         if (event_handler) {
