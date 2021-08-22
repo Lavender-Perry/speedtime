@@ -1,20 +1,45 @@
-err() {
-    echo Errors during build
-    rm -r /tmp/speedtime_build
-    exit 1
+#!/usr/bin/env sh
+
+qwhich() {
+    which "$@" > /dev/null 2>&1
 }
 
-# For nix-build
-[ -z $stdenv ] || source $stdenv/setup
-[ -z $src ] && src="./src"
-[ -z $out ] && out="./result"
+clean_exit() {
+    rm -r $BUILD
+    exit $1
+}
 
-mkdir -p /tmp/speedtime_build $out/bin
+[ -z $BUILD ] && BUILD="./build"
+[ -z $SRC ] && SRC="./src"
+[ -z $OUT ] && OUT="./result"
 
-for csrc in $src/*.c; do
-    $CC -Wall -Wextra -Werror \
-        -c $csrc -o /tmp/speedtime_build/${csrc:$(( ${#src} + 1 ))}.o || err
+mkdir -p $BUILD $OUT/bin $SRC/user
+
+if [ ! -f src/user/config.h ]; then
+    cp $SRC/config.def.h $SRC/user/config.h
+    echo -n "Config header created.  Would you like to edit it before building? (y/n) "
+    read answer
+    if [ "$answer" != "${answer#[Yy]}" ]; then
+        if [ -z $EDITOR ]; then
+            echo "\$EDITOR not set.  Please edit $SRC/user/config.h manually.\
+                Then run this script again."
+            clean_exit 1
+        else
+            $EDITOR $SRC/user/config.h
+        fi
+    fi
+fi
+
+qwhich $CC || { qwhich clang && CC=clang; } || { qwhich gcc && CC=gcc; } || {
+    echo "No C compiler found, install one or set CC to a C compiler"
+    clean_exit 1
+}
+
+for csrc in $SRC/*.c; do
+    $CC -Wall -Wextra -Werror -c $csrc -o $BUILD/${csrc:$(( ${#SRC} + 1 ))}.o ||
+        clean_exit 1
 done
-$CC -pthread /tmp/speedtime_build/*.o -o $out/bin/speedtime || err
+$CC -pthread $BUILD/*.o -o $OUT/bin/speedtime || clean_exit 1
 
-rm -r /tmp/speedtime_build
+echo "Build succeeded.  Executable is at $OUT/bin/speedtime"
+clean_exit 0
