@@ -43,7 +43,10 @@ int main(int argc, char** argv) {
                     split_file = fopen(optarg, "rw");
                     if (!split_file)
                         goto fopen_err;
-                    split_amount = fread(splits, sizeof(struct split), MAX_SPLITS, split_file);
+                    split_amount = fread(splits,
+                            sizeof(struct split),
+                            MAX_SPLITS,
+                            split_file);
                     if (!split_amount)
                         fputs("No splits could be read from the file\n", stderr);
                 }
@@ -73,12 +76,7 @@ int main(int argc, char** argv) {
 
     /* Set up for starting the timer */
     int return_value = EXIT_SUCCESS;
-    struct timespec* current_time = malloc(sizeof(struct timespec));
-    if (!current_time) {
-        perror("malloc");
-        return_value = errno;
-        goto end_no_free;
-    }
+    struct timespec current_time;
 
     // Print with no newline
     fputs("0:00", stdout);
@@ -88,7 +86,7 @@ int main(int argc, char** argv) {
     int toggleKeyPressed = false;
 
     while (!toggleKeyPressed) {
-        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, current_time);
+        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, &current_time);
         if (toggleKeyPressed == -1) {
             return_value = errno;
             goto program_end;
@@ -96,7 +94,7 @@ int main(int argc, char** argv) {
     }
 
     /* Start the timer */
-    printTime(NULL, current_time, false); // Give start time to printTime()
+    printTime(NULL, &current_time, false); // Give start time to printTime()
 
     pthread_t timer_thread_id;
     bool do_thread = true;
@@ -114,7 +112,7 @@ int main(int argc, char** argv) {
             goto program_end;
         }
         /* Check if the key is pressed & handle errors */
-        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, current_time);
+        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, &current_time);
         if (toggleKeyPressed == -1) {
             return_value = errno;
             break;
@@ -126,14 +124,12 @@ int main(int argc, char** argv) {
         perror("pthread_join");
         return_value = errno;
     }
-    printTime(current_time, NULL, true);
+    printTime(&current_time, NULL, true);
     puts(""); // Print newline
     if (return_value)
         puts("The printed time is most likely NOT accurate!");
 
 program_end:
-    free(current_time);
-end_no_free:
     fclose(key_event_fp);
     return return_value;
 
