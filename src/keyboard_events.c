@@ -17,13 +17,10 @@ char* getKeyEventFile(void) {
         return return_value;
     }
 
-    size_t bufsize = 0;
-
-    char* line;
-
+    char line[100];
     char* event_handler;
 
-    while (getline(&line, &bufsize, devices_list) != EOF) {
+    while (fgets(line, sizeof(line), devices_list) != NULL) {
         if (event_handler) {
             const char strcheck[] = "B: EV=120013";
             const size_t checklen = strlen(strcheck);
@@ -45,8 +42,9 @@ char* getKeyEventFile(void) {
             const size_t checklen = strlen(strcheck);
 
             event_handler = strtok(line, splitter);
-            while (strlen(event_handler) < checklen
+            while ((strlen(event_handler) < checklen
                     || strncmp(event_handler, strcheck, checklen))
+                    && event_handler != NULL)
                 event_handler = strtok(NULL, splitter);
         }
     }
