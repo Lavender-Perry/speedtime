@@ -2,10 +2,9 @@
 #include <string.h>
 #include <time.h>
 
+#include "compile_settings.h"
 #include "splits.h"
 #include "utils.h"
-
-#include "user/config.h"
 
 /* Reads from stdin & puts splits in buf, returns amount of splits or -1 on error
  * Stops when "END" read or on EOF */

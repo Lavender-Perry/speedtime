@@ -1,0 +1,2 @@
+: foreach src/*.c |> gcc -Wall -Wextra -Werror -c %f -o %o |> build/%B.c.o
+: build/*.o |> gcc -pthread %f -o %o |> speedtime

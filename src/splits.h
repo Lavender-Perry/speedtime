@@ -1,10 +1,8 @@
 #ifndef SPLITS_H
 #define SPLITS_H
 
-#include "user/config.h"
-
 struct split {
-    char name[MAX_SPLIT_NAME_LEN];
+    char name[MAX_SPLIT_NAME_LEN]; // Requires compile_settings.h
     struct timespec best_time;
 };
 

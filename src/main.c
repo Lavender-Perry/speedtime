@@ -9,12 +9,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "compile_settings.h"
 #include "keyboard_events.h"
 #include "splits.h"
 #include "timing.h"
 #include "utils.h"
-
-#include "user/config.h"
 
 int main(int argc, char** argv) {
     /* Variables that could be set by argument parsing */
@@ -45,16 +44,14 @@ int main(int argc, char** argv) {
                     goto fopen_err;
                 split_amount = fread(splits,
                         sizeof(struct split), MAX_SPLITS, split_file);
-                // Fallthrough
+                goto split_check;
             case 's': // Create new splits
-                if (opt != 'l') // Making sure it is not run by 'l' with fallthrough
-                    split_amount = getSplitsFromInput(splits);
+                split_amount = getSplitsFromInput(splits);
+split_check:
                 if (split_amount > 0)
                     run_with_splits = true;
                 else
                     fputs("No splits could be read\n", stderr);
-                // Fallthrough
-            default:
                 break;
         }
 
