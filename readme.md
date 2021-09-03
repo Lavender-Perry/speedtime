@@ -1,6 +1,5 @@
 # Speedtime
 A timer for Linux that runs entirely within a terminal.
-\
 ## How it works
 It monitors the keyboard for keypresses, & reacts whenever a specific (configurable)
 key is pressed.
