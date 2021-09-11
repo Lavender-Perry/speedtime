@@ -1,0 +1,39 @@
+.TH SPEEDTIME 1 "2021-09-03" "2021.08.13"
+
+.SH NAME
+speedtime - a timer for Linux.
+
+.SH SYNOPSIS
+.B speedtime
+[-f \fIfilename\fP]
+[-k \fIkeycode\fP]
+[-l \fIfilename\fP] 
+[-s]
+
+.SH DESCRIPTION
+\fBspeedtime\fP is a timer for Linux that runs entirely within a terminal.
+
+.SH OPTIONS
+.PP
+\fB-f\fP \fIfilename\fP
+.RS 4
+Monitor the given event file for keyboard events.
+.RE
+.PP
+\fB-k\fP \fIkeycode\fP
+.RS 4
+Toggle the timer when the key corresponding to the given keycode is pressed.
+.RE
+.PP
+\fB-l\fP \fIfilename\fP
+.RS 4
+Load splits from the given file.  Can not be used with \fB-s\fP.
+.RE
+.PP
+\fB-s\fP
+.RS 4
+Create new splits.  Can not be used with \fB-l\fP.
+.RE
+
+.SH AUTHOR
+Lavender Perry <endie2@protonmail.com>
