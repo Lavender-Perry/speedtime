@@ -1,11 +1,10 @@
 #include <asm/types.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -13,7 +12,6 @@
 #include "keyboard_events.h"
 #include "splits.h"
 #include "timing.h"
-#include "utils.h"
 
 int main(int argc, char** argv) {
     /* Variables that could be set by argument parsing */
@@ -70,7 +68,13 @@ split_check:
 
     /* Set up for starting the timer */
     int return_value = EXIT_SUCCESS;
-    struct timespec current_time;
+    struct timespec start_time, stop_time;
+
+    // Do not echo input
+    struct termios term;
+    tcgetattr(STDIN_FILENO, &term);
+    term.c_lflag &= ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
     // Print with no newline
     fputs("0:00", stdout);
@@ -80,7 +84,7 @@ split_check:
     int toggleKeyPressed = false;
 
     while (!toggleKeyPressed) {
-        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, &current_time);
+        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, &start_time);
         if (toggleKeyPressed == -1) {
             return_value = errno;
             goto program_end;
@@ -88,8 +92,6 @@ split_check:
     }
 
     /* Start the timer */
-    printTime(NULL, &current_time, false); // Give start time to printTime()
-
     pthread_t timer_thread_id;
     bool do_thread = true;
     if (pthread_create(&timer_thread_id, NULL, timer, &do_thread)) {
@@ -100,63 +102,32 @@ split_check:
     /* Wait until key pressed to stop the timer */
     toggleKeyPressed = false;
     while (!toggleKeyPressed) {
-        /* End if any timer thread errors (errors in timer thread will set errno) */
-        if (errno) {
-            return_value = errno;
-            goto program_end;
-        }
-        /* Check if the key is pressed & handle errors */
-        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, &current_time);
+        toggleKeyPressed = keyPressed(toggle_key, key_event_fp, &stop_time);
         if (toggleKeyPressed == -1) {
             return_value = errno;
             break;
         }
     }
+
     /* Stop the timer */
     do_thread = false;
     if (pthread_join(timer_thread_id, NULL) == -1) {
         perror("pthread_join");
         return_value = errno;
     }
-    printTime(&current_time, NULL, true);
+    printTime(&stop_time, &start_time);
     puts(""); // Print newline
     if (return_value)
         puts("The printed time is most likely NOT accurate!");
 
 program_end:
     fclose(key_event_fp);
-    if (run_with_splits) {
-        if (split_file) {
-            // TODO: update best times in split file if they improve
-            fclose(split_file);
-        } else {
-            char split_name[30];
-            puts("Please enter the name you would like to save the splits as.\n"
-                    "Or enter \"cancel\" (without quotes) to not save the splits.");
-            do if (fgets_no_newline(split_name, sizeof(split_name), stdin) == NULL) {
-                fputs("Error reading your input.\n", stderr);
-                return ERROR_STATUS;
-            } while (split_name[0] == '\0');
-            if (strcmp(split_name, "cancel")) { // "cancel" not read
-                // Create the split file, failing if it already exists
-                const int fd = open(split_name, // TODO: add a prefix
-                        O_CREAT | O_WRONLY | O_EXCL,
-                        S_IRUSR | S_IWUSR);
-                if (fd < 0) { // Failure
-                    perror("open");
-                    return errno;
-                }
-                // Save splits to file
-                const ssize_t write_amount = sizeof(struct split) * split_amount;
-                if (write(fd, splits, write_amount) == write_amount)
-                    puts("Splits successfully saved.");
-                else {
-                    fputs("Error saving splits.\n", stderr);
-                    return ERROR_STATUS;
-                }
-            }
-        }
-    }
+    // Allow echoing input again
+    term.c_lflag |= ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+
+    if (run_with_splits)
+        return saveSplits(splits, split_file, split_amount, return_value);
     return return_value;
 
 fopen_err:

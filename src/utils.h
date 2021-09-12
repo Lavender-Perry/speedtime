@@ -1,7 +1,6 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#define ERROR_STATUS errno ? errno : EXIT_FAILURE
-char* fgets_no_newline(char* buf, size_t buflen, FILE* fp);
+char* fgets_no_newline(char* restrict buf, size_t buflen, FILE* restrict fp);
 
 #endif // UTILS_H
