@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "compile_settings.h"
@@ -19,7 +18,7 @@ int getSplitsFromInput(struct split* restrict buf) {
             && i < MAX_SPLITS) {
         if (!buf[i].name)
             return -1;
-        buf[i].best_time = (struct timespec) {0, 0};
+        // buf[i].best_time = (struct timeval) {0, 0};
         i++;
     }
 
@@ -70,4 +69,10 @@ int saveSplits(const struct split* restrict splits,
         }
     }
     return errno ? errno : return_value;
+}
+
+/* Starts the split, by printing the time for the previous
+ * & moving the cursor to where the time should be printed for the next. */
+void startSplit(struct timeval start_time, int split_num) {
+    // TODO: actually write this function (its 00:45 rn im tired)
 }

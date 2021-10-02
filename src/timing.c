@@ -1,14 +1,14 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 
-/* Prints elapsed time using the current timespec & starting timespec */
-void printTime(const struct timespec* time, const struct timespec* start_time) {
-    const long tv = (time->tv_sec - start_time->tv_sec) * 100
-        + (time->tv_nsec - start_time->tv_nsec) / 10000000;
-    printf("\r%ld:%.2ld.%.2ld", tv / 6000, tv / 100 % 60, tv % 100);
+/* Prints elapsed time using the current timeval & starting timeva; */
+void printTime(struct timeval time, struct timeval start_time) {
+    const long tv_sec = time.tv_sec - start_time.tv_sec;
+    const long tv_usec = time.tv_usec - start_time.tv_usec;
+    printf("\r%.2ld:%.2ld.%.2ld", tv_sec / 60, tv_sec % 60, tv_usec);
     fflush(stdout);
 }
 
@@ -24,7 +24,7 @@ void* timer(const void* arg_ptr) {
             minutes++;
         } else
             seconds++;
-        printf("\r%d:%.2d", minutes, seconds);
+        printf("\r%.2d:%.2d", minutes, seconds);
         fflush(stdout);
     }
     pthread_exit(NULL);

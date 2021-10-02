@@ -3,8 +3,6 @@
 #include <linux/input-event-codes.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 /* Autodetects & returns the path of the file that stores keyboard events */
 char* getKeyEventFile(void) {
@@ -54,16 +52,14 @@ char* getKeyEventFile(void) {
 
 /* Checks if key was pressed, updates when
  * Returns: -1 on error getting event, or if the key was pressed */
-int keyPressed(__u16 key_code, FILE* keyboard_event_fp, struct timespec* when) {
+int keyPressed(__u16 key_code, FILE* keyboard_event_fp, struct timeval* restrict when) {
     /* Read & parse data */
     struct input_event event;
-    
     // Read event data
     if (fread(&event, sizeof(event), 1, keyboard_event_fp) != 1)
         return -1;
-    // Update the time in struct timespec* when
-    when->tv_sec = event.time.tv_sec;
-    when->tv_nsec = event.time.tv_usec * 1000;
+    // Update the time in struct timeval* when
+    *when = event.time;
     // Return if the key was pressed or not
     return event.type == EV_KEY && event.code == key_code && event.value;
 }

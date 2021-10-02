@@ -2,6 +2,6 @@
 #define KEYBOARD_EVENTS_H
 
 char* getKeyEventFile(void);
-int keyPressed(__u16 key_code, FILE* keyboard_event_fp, struct timespec* when);
+int keyPressed(__u16 key_code, FILE* keyboard_event_fp, struct timeval* restrict when);
 
 #endif // KEYBOARD_EVENTS_H
