@@ -14,21 +14,13 @@
 #include "splits.h"
 #include "timing.h"
 
-/* Sets key variable to value from optarg.
- * Used in argument parsing. */
-void set_key(__u16* restrict key, char* optarg) {
-    const __u16 atoi_res = atoi(optarg);
-    if (!atoi_res)
-        fputs("Invalid key code specified, using default key\n", stderr);
-    else
-        *key = atoi_res;
-}
+void set_key(__u16* restrict key, char* optarg);
 
 /* Argument parsing, event loop, etc. */
 int main(int argc, char** argv) {
     /* Variables that could be set by argument parsing */
     char* key_event_path = NULL;
-    __u16 reset_key = DEFAULT_RESET_KEY;
+    __u16 stop_key = DEFAULT_STOP_KEY;
     __u16 timerCtrl_key = DEFAULT_CONTROL_KEY;
     FILE* split_file = NULL;
     int split_amount = 0;
@@ -37,13 +29,13 @@ int main(int argc, char** argv) {
 
     /* Argument parsing */
     int opt;
-    while ((opt = getopt(argc, argv, "f:r:c:l:s")) != -1)
+    while ((opt = getopt(argc, argv, "f:k:c:l:s")) != -1)
         switch (opt) {
             case 'f': // Set path to file for monitoring key events
                 key_event_path = optarg;
                 break;
-            case 'r': // Set key to reset the timer
-                set_key(&reset_key, optarg);
+            case 'k': // Set key to stop the timer
+                set_key(&stop_key, optarg);
                 break;
             case 'c': // Set key to control the timer
                 set_key(&timerCtrl_key, optarg);
@@ -79,8 +71,7 @@ split_check:
         goto fopen_err;
 
     /* Set up for starting the timer */
-    int return_value = EXIT_SUCCESS;
-    struct timeval start_time, stop_time;
+    struct timeval start_time, current_time;
 
     // Do not echo input
     struct termios term;
@@ -100,17 +91,17 @@ split_check:
         fflush(stdout);
     }
 
-    /* Wait until enter key pressed to start the timer */
-    int ctrlKeyPressed = false;
-    while (!ctrlKeyPressed) {
-        ctrlKeyPressed = keyPressed(timerCtrl_key, key_event_fp, &start_time);
-        if (ctrlKeyPressed == -1) {
-            return_value = errno;
+    /* Wait until timer control key pressed to start the timer */
+    __u16 keyPressedResult;
+    do {
+        keyPressedResult = keyPressed(key_event_fp, &start_time);
+        if (keyPressedResult == 0xffff)
             goto program_end;
-        }
-    }
+    } while (keyPressedResult != timerCtrl_key);
 
     /* Start the timer */
+    startSplit(start_time, true);
+
     pthread_t timer_thread_id;
     bool do_thread = true;
     if (pthread_create(&timer_thread_id, NULL, timer, &do_thread)) {
@@ -118,26 +109,31 @@ split_check:
         goto program_end;
     }
 
-    /* Wait until key pressed to stop the timer */
-    ctrlKeyPressed = false;
+    int current_split = 0;
 
-    while (!ctrlKeyPressed) {
-        ctrlKeyPressed = keyPressed(timerCtrl_key, key_event_fp, &stop_time);
-        if (ctrlKeyPressed == -1) {
-            return_value = errno;
+    do {
+        keyPressedResult = keyPressed(key_event_fp, &current_time);
+        if (keyPressedResult == 0xffff) {
+            perror("Error getting key press");
             break;
         }
-    }
+        if (keyPressedResult == timerCtrl_key) {
+            if (current_split >= split_amount)
+                break;
+            else {
+                current_split++;
+                startSplit(current_time, false);
+            }
+        }
+    } while (keyPressedResult != stop_key);
 
     /* Stop the timer */
     do_thread = false;
-    if (pthread_join(timer_thread_id, NULL) == -1) {
+    if (pthread_join(timer_thread_id, NULL) == -1)
         perror("pthread_join");
-        return_value = errno;
-    }
-    printTime(stop_time, start_time);
+    printTime(current_time, start_time);
     puts(""); // Print newline
-    if (return_value)
+    if (errno)
         puts("The printed time is most likely NOT accurate!");
 
 program_end:
@@ -147,10 +143,20 @@ program_end:
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
     if (run_with_splits)
-        return saveSplits(splits, split_file, split_amount, return_value);
-    return return_value;
+        saveSplits(splits, split_file, split_amount);
+    return errno;
 
 fopen_err:
     perror("fopen");
     return errno;
+}
+
+/* Sets key variable to value from optarg.
+ * Used in argument parsing. */
+void set_key(__u16* restrict key, char* optarg) {
+    const __u16 atoi_res = atoi(optarg);
+    if (!atoi_res)
+        fputs("Invalid key code specified, using default key\n", stderr);
+    else
+        *key = atoi_res;
 }

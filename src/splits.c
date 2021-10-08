@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 
 #include "compile_settings.h"
 #include "splits.h"
+#include "timing.h"
 #include "utils.h"
 
 /* Reads from stdin & puts splits in buf, returns amount of splits or -1 on error
@@ -26,12 +28,10 @@ int getSplitsFromInput(struct split* restrict buf) {
 }
 
 /* Saves new splits, prompting for the file to save them in, or updates existing splits
- * if the best times improve. 
- * Returns return_value on success or errno/EXIT_FAILURE on error */
-int saveSplits(const struct split* restrict splits,
+ * if the best times improve. */
+void saveSplits(const struct split* restrict splits,
         FILE* restrict split_file,
-        int split_amount,
-        int return_value) {
+        int split_amount) {
     if (split_file) {
         // TODO: update best times in split file if they improve
         fclose(split_file);
@@ -41,10 +41,12 @@ int saveSplits(const struct split* restrict splits,
         // Get name to save splits as
         puts("Please enter the name you would like to save the splits as.\n"
                 "Or enter \"cancel\" (without quotes) to not save the splits.");
-        do if (fgets_no_newline(split_name, sizeof(split_name), stdin) == NULL) {
-            fputs("Error reading your input.\n", stderr);
-            return errno ? errno : EXIT_FAILURE;
-        } while (split_name[0] == '\0');
+        do
+            if (fgets_no_newline(split_name, sizeof(split_name), stdin) == NULL) {
+                fputs("Error reading your input.\n", stderr);
+                return;
+            }
+        while (split_name[0] == '\0');
 
         if (strcmp(split_name, "cancel")) { // "cancel" not read
             // Create the split file, failing if it already exists
@@ -53,26 +55,31 @@ int saveSplits(const struct split* restrict splits,
                     S_IRUSR | S_IWUSR);
             if (fd < 0) { // Failure
                 perror("open");
-                return errno;
+                return;
             }
             // Save splits to file
             const ssize_t write_amount = sizeof(struct split) * split_amount;
             if (write(fd, splits, write_amount) == write_amount)
                 puts("Splits successfully saved.");
-            else {
+            else
                 fputs("Error saving splits.\n", stderr);
-                return_value = EXIT_FAILURE;
-            }
             // Close file
             if (close(fd) == -1)
                 perror("close");
         }
     }
-    return errno ? errno : return_value;
+    return;
 }
 
 /* Starts the split, by printing the time for the previous
  * & moving the cursor to where the time should be printed for the next. */
-void startSplit(struct timeval start_time, int split_num) {
-    // TODO: actually write this function (its 00:45 rn im tired)
+void startSplit(struct timeval start_time, bool first_split) {
+    static struct timeval begin_time;
+    if (first_split)
+        begin_time = start_time;
+    else {
+        puts("\033[1A");
+        printTime(begin_time, start_time);
+        puts("\033[1B");
+    }
 }

@@ -50,16 +50,15 @@ char* getKeyEventFile(void) {
     return return_value;
 }
 
-/* Checks if key was pressed, updates when
- * Returns: -1 on error getting event, or if the key was pressed */
-int keyPressed(__u16 key_code, FILE* keyboard_event_fp, struct timeval* restrict when) {
-    /* Read & parse data */
+/* Checks if key was pressed until one is, & sets when to the time it was pressed
+ * Returns: 0xffff on error getting event, or the key that was pressed */
+__u16 keyPressed(FILE* keyboard_event_fp, struct timeval* restrict when) {
     struct input_event event;
-    // Read event data
-    if (fread(&event, sizeof(event), 1, keyboard_event_fp) != 1)
-        return -1;
-    // Update the time in struct timeval* when
-    *when = event.time;
-    // Return if the key was pressed or not
-    return event.type == EV_KEY && event.code == key_code && event.value;
+    while (fread(&event, sizeof(event), 1, keyboard_event_fp) == 1)
+        if (event.type == EV_KEY && event.value) {
+            *when = event.time;
+            return event.code;
+        }
+    // Error
+    return 0xffff;
 }
