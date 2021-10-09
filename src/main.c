@@ -13,6 +13,7 @@
 #include "keyboard_events.h"
 #include "splits.h"
 #include "timing.h"
+#include "utils.h"
 
 void set_key(__u16* restrict key, char* optarg);
 
@@ -81,14 +82,12 @@ split_check:
 
     fputs("\033[H\033[J", stdout); // Clear console
 
-    if (run_with_splits)
+    if (run_with_splits) {
         // Print split names on seperate lines
         for (int i = 0; i < split_amount; i++)
             puts(splits[i].name);
-    else {
-        // Output "00:00" with no newline
-        fputs("00:00", stdout);
-        fflush(stdout);
+        // Move cursor
+        printf("\033[%dA\033[%dC", split_amount, MAX_SPLIT_NAME_LEN + 2);
     }
 
     /* Wait until timer control key pressed to start the timer */
@@ -100,16 +99,18 @@ split_check:
     } while (keyPressedResult != timerCtrl_key);
 
     /* Start the timer */
-    startSplit(start_time, true);
+    startSplit(start_time, true, NULL);
 
     pthread_t timer_thread_id;
-    bool do_thread = true;
-    if (pthread_create(&timer_thread_id, NULL, timer, &do_thread)) {
+    pthread_mutex_t timer_mtx;
+    pthread_mutex_init(&timer_mtx, NULL);
+    struct thread_args timer_args = {true, &timer_mtx};
+    if (pthread_create(&timer_thread_id, NULL, timer, &timer_args)) {
         fputs("Error creating timer thread\n", stderr);
         goto program_end;
     }
 
-    int current_split = 0;
+    int current_split = 1;
 
     do {
         keyPressedResult = keyPressed(key_event_fp, &current_time);
@@ -122,19 +123,20 @@ split_check:
                 break;
             else {
                 current_split++;
-                startSplit(current_time, false);
+                startSplit(current_time, false, timer_args.mtx_ptr);
             }
         }
     } while (keyPressedResult != stop_key);
 
     /* Stop the timer */
-    do_thread = false;
+    timer_args.run_thread = false;
     if (pthread_join(timer_thread_id, NULL) == -1)
         perror("pthread_join");
     printTime(current_time, start_time);
     puts(""); // Print newline
     if (errno)
         puts("The printed time is most likely NOT accurate!");
+    pthread_mutex_destroy(&timer_mtx);
 
 program_end:
     fclose(key_event_fp);

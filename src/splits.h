@@ -11,6 +11,7 @@ int getSplitsFromInput(struct split* restrict buf);
 void saveSplits(const struct split* restrict splits,
         FILE* restrict split_file,
         int split_amount);
-void startSplit(struct timeval start_time, bool first_split);
+// Requires stdbool.h & pthread.h
+void startSplit(struct timeval start_time, bool first_split, pthread_mutex_t* mtx_ptr);
 
 #endif // SPLITS_H

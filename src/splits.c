@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,13 +74,14 @@ void saveSplits(const struct split* restrict splits,
 
 /* Starts the split, by printing the time for the previous
  * & moving the cursor to where the time should be printed for the next. */
-void startSplit(struct timeval start_time, bool first_split) {
+void startSplit(struct timeval start_time, bool first_split, pthread_mutex_t* mtx_ptr) {
     static struct timeval begin_time;
     if (first_split)
         begin_time = start_time;
     else {
-        puts("\033[1A");
-        printTime(begin_time, start_time);
-        puts("\033[1B");
+        pthread_mutex_lock(mtx_ptr);
+        printTime(start_time, begin_time);
+        fputs("\033[1B", stdout);
+        pthread_mutex_unlock(mtx_ptr);
     }
 }
