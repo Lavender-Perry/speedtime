@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 #include "compile_settings.h"
-#include "keyboard_events.h"
+#include "keyboard.h"
 #include "splits.h"
 #include "timing.h"
 #include "utils.h"
