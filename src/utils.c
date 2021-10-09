@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+/* fgets without newline character */
 char* fgets_no_newline(char* restrict buf, size_t buflen, FILE* restrict fp) {
     if (fgets(buf, buflen, fp) != NULL) {
         char* newline_loc = strchr(buf, '\n');

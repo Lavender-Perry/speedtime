@@ -37,21 +37,21 @@ void saveSplits(const struct split* restrict splits,
         // TODO: update best times in split file if they improve
         fclose(split_file);
     } else {
-        char split_name[30];
+        char splits_name[30];
 
         // Get name to save splits as
         puts("Please enter the name you would like to save the splits as.\n"
                 "Or enter \"cancel\" (without quotes) to not save the splits.");
         do
-            if (fgets_no_newline(split_name, sizeof(split_name), stdin) == NULL) {
+            if (fgets_no_newline(splits_name, sizeof(splits_name), stdin) == NULL) {
                 fputs("Error reading your input.\n", stderr);
                 return;
             }
-        while (split_name[0] == '\0');
+        while (splits_name[0] == '\0');
 
-        if (strcmp(split_name, "cancel")) { // "cancel" not read
+        if (strcmp(splits_name, "cancel")) { // "cancel" not read
             // Create the split file, failing if it already exists
-            const int fd = open(split_name, // TODO: add a prefix
+            const int fd = open(splits_name, // TODO: add a prefix
                     O_CREAT | O_WRONLY | O_EXCL,
                     S_IRUSR | S_IWUSR);
             if (fd < 0) { // Failure
