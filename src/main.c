@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <termios.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -14,8 +13,6 @@
 #include "splits.h"
 #include "timing.h"
 #include "utils.h"
-
-void set_key(__u16* restrict key, char* optarg);
 
 /* Argument parsing, event loop, etc. */
 int main(int argc, char** argv) {
@@ -151,14 +148,4 @@ program_end:
 fopen_err:
     perror("fopen");
     return errno;
-}
-
-/* Sets key variable to value from optarg.
- * Used in argument parsing. */
-void set_key(__u16* restrict key, char* optarg) {
-    const __u16 atoi_res = atoi(optarg);
-    if (!atoi_res)
-        fputs("Invalid key code specified, using default key\n", stderr);
-    else
-        *key = atoi_res;
 }

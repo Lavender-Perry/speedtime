@@ -2,6 +2,7 @@
 #include <linux/input.h>
 #include <linux/input-event-codes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* Autodetects & returns the path of the file that stores keyboard events */
@@ -48,6 +49,16 @@ char* getKeyEventFile(void) {
     }
     fclose(devices_list);
     return return_value;
+}
+
+/* Sets key variable to value from optarg.
+ * Used in argument parsing. */
+void set_key(__u16* restrict key, char* optarg) {
+    const __u16 atoi_res = atoi(optarg);
+    if (!atoi_res)
+        fputs("Invalid key code specified, using default key\n", stderr);
+    else
+        *key = atoi_res;
 }
 
 /* Checks if key was pressed until one is, & sets when to the time it was pressed
