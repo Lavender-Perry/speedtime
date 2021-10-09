@@ -1,4 +1,4 @@
-.TH SPEEDTIME 1 "2021-09-11" "2021.08.13"
+.TH SPEEDTIME 1 "2021-10-09" "2021.08.13"
 
 .SH NAME
 speedtime - a timer for Linux.
@@ -7,6 +7,7 @@ speedtime - a timer for Linux.
 .B speedtime
 [-f \fIfilename\fP]
 [-k \fIkeycode\fP]
+[-c \fIkeycode\fP]
 [-l \fIfilename\fP] 
 [-s]
 
@@ -22,7 +23,12 @@ Monitor the given event file for keyboard events.
 .PP
 \fB-k\fP \fIkeycode\fP
 .RS 4
-Toggle the timer when the key corresponding to the given keycode is pressed.
+Stop the timer when the key corresponding to the given keycode is pressed.
+.RE
+.PP
+\fB-c\fP \fIkeycode\fP
+.RS 4
+Start the timer/next split when the key corresponding to the given keycode is pressed.
 .RE
 .PP
 \fB-l\fP \fIfilename\fP
