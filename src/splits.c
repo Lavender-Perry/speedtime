@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -17,7 +18,7 @@
 int getSplitsFromInput(struct split* restrict buf) {
     int i = 0; // Must be in this scope to return it
 
-    while (fgets_no_newline(buf[i].name, MAX_SPLIT_NAME_LEN, stdin)[0] != '\0'
+    while (fgets_no_newline(buf[i].name, sizeof(buf[i].name), stdin)[0] != '\0'
             && i < MAX_SPLITS) {
         if (!buf[i].name)
             return -1;
@@ -37,16 +38,33 @@ void saveSplits(const struct split* restrict splits,
         // TODO: update best times in split file if they improve
         fclose(split_file);
     } else {
-        char splits_name[30];
+        char splits_name[MAX_SPLIT_NAME_LEN];
+
+        // Discard sent input
+        struct pollfd stdin_pollfd = {fd: STDIN_FILENO, events: POLLIN};
+        while (poll(&stdin_pollfd, 1, 0)
+                && stdin_pollfd.revents & POLLIN
+                && getc(stdin) != EOF)
+            /* Discard input */;
+
+        puts("Now saving the new splits. "
+                "Please press enter with the program window/console focused.");
+
+        // Wait for send, then discard previously unsent input
+        // This is not the final value for splits_name, it is being used as a tmp buffer
+        if (!fgets(splits_name, sizeof(splits_name), stdin))
+            goto input_read_err;
+
+        // Discard any remaining input
+        while (strlen(splits_name) == sizeof(splits_name))
+            fgets(splits_name, sizeof(splits_name), stdin);
 
         // Get name to save splits as
         puts("Please enter the name you would like to save the splits as.\n"
                 "Or enter \"cancel\" (without quotes) to not save the splits.");
         do
-            if (fgets_no_newline(splits_name, sizeof(splits_name), stdin) == NULL) {
-                fputs("Error reading your input.\n", stderr);
-                return;
-            }
+            if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
+                goto input_read_err;
         while (splits_name[0] == '\0');
 
         if (strcmp(splits_name, "cancel")) { // "cancel" not read
@@ -70,6 +88,8 @@ void saveSplits(const struct split* restrict splits,
         }
     }
     return;
+input_read_err:
+    fputs("Error reading your input.\n", stderr);
 }
 
 /* Starts the split, by printing the time for the previous
