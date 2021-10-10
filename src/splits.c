@@ -50,14 +50,11 @@ void saveSplits(const struct split* restrict splits,
         puts("Now saving the new splits. "
                 "Please press enter with the program window/console focused.");
 
-        // Wait for send, then discard previously unsent input
-        // This is not the final value for splits_name, it is being used as a tmp buffer
-        if (!fgets(splits_name, sizeof(splits_name), stdin))
+        // Wait for send, then discard previously unsent input.
+        // This is not the final value for splits_name, it is being used as a buffer for
+        // discarded input.
+        if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
             goto input_read_err;
-
-        // Discard any remaining input
-        while (strlen(splits_name) == sizeof(splits_name))
-            fgets(splits_name, sizeof(splits_name), stdin);
 
         // Get name to save splits as
         puts("Please enter the name you would like to save the splits as.\n"
@@ -101,7 +98,6 @@ void startSplit(struct timeval start_time, bool first_split, pthread_mutex_t* mt
     else {
         pthread_mutex_lock(mtx_ptr);
         printTime(start_time, begin_time);
-        fputs("\033[1B", stdout);
         pthread_mutex_unlock(mtx_ptr);
     }
 }

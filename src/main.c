@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
     __u16 stop_key = DEFAULT_STOP_KEY;
     __u16 timerCtrl_key = DEFAULT_CONTROL_KEY;
     FILE* split_file = NULL;
-    int split_amount = 0;
+    int split_amount = 1;
     struct split splits[MAX_SPLITS];
     bool run_with_splits = false;
 
@@ -43,7 +43,9 @@ int main(int argc, char** argv) {
                 if (!split_file)
                     goto fopen_err;
                 split_amount = fread(splits,
-                        sizeof(struct split), MAX_SPLITS, split_file);
+                        sizeof(struct split),
+                        MAX_SPLITS,
+                        split_file);
                 goto split_check;
             case 's': // Create new splits
                 split_amount = getSplitsFromInput(splits);
@@ -77,14 +79,14 @@ split_check:
     term.c_lflag &= ~ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
-    fputs("\033[H\033[J", stdout); // Clear console
+    fputs("\033[2J\033[H", stdout); // Clear console
 
     if (run_with_splits) {
         // Print split names on seperate lines
         for (int i = 0; i < split_amount; i++)
             puts(splits[i].name);
         // Move cursor
-        printf("\033[%dA\033[%dC", split_amount, MAX_SPLIT_NAME_LEN + 2);
+        printf("\033[0;%dH", MAX_SPLIT_NAME_LEN + 1);
     }
 
     /* Wait until timer control key pressed to start the timer */
@@ -116,12 +118,10 @@ split_check:
             break;
         }
         if (keyPressedResult == timerCtrl_key) {
-            if (current_split >= split_amount)
+            if (current_split == split_amount)
                 break;
-            else {
-                current_split++;
-                startSplit(current_time, false, timer_args.mtx_ptr);
-            }
+            current_split++;
+            startSplit(current_time, false, timer_args.mtx_ptr);
         }
     } while (keyPressedResult != stop_key);
 
@@ -129,10 +129,15 @@ split_check:
     timer_args.run_thread = false;
     if (pthread_join(timer_thread_id, NULL) == -1)
         perror("pthread_join");
+
     printTime(current_time, start_time);
-    puts(""); // Print newline
+
+    if (run_with_splits)
+        printf("\033[%d;0H", split_amount + 1); // Move to after splits
+
     if (errno)
         puts("The printed time is most likely NOT accurate!");
+
     pthread_mutex_destroy(&timer_mtx);
 
 program_end:

@@ -10,7 +10,7 @@
 void printTime(struct timeval time, struct timeval start_time) {
     const long tv = (time.tv_sec - start_time.tv_sec) * 100
         + (time.tv_usec - start_time.tv_usec) / 10000;
-    printf("%.2ld:%.2ld.%.2ld\033[8D", tv / 6000, tv / 100 % 60, tv % 100);
+    printf("%.2ld:%.2ld.%.2ld\033[8D\033[1B", tv / 6000, tv / 100 % 60, tv % 100);
     fflush(stdout);
 }
 
