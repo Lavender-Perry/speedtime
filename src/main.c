@@ -79,7 +79,7 @@ split_check:
     term.c_lflag &= ~ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
-    fputs("\033[2J\033[H", stdout); // Clear console
+    fputs("\033[H\033[J", stdout); // Clear console
 
     if (run_with_splits) {
         // Print split names on seperate lines
