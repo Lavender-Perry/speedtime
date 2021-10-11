@@ -2,7 +2,6 @@
 #define SPLITS_H
 
 struct split {
-    /* struct timeval best_time; ** not yet implemented **/
     // Requires compile_settings.h
     char name[MAX_SPLIT_NAME_LEN];
 };

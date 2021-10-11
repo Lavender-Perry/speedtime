@@ -22,7 +22,6 @@ int getSplitsFromInput(struct split* restrict buf) {
             && i < MAX_SPLITS) {
         if (!buf[i].name)
             return -1;
-        // buf[i].best_time = (struct timeval) {0, 0};
         i++;
     }
 
@@ -34,10 +33,9 @@ int getSplitsFromInput(struct split* restrict buf) {
 void saveSplits(const struct split* restrict splits,
         FILE* restrict split_file,
         int split_amount) {
-    if (split_file) {
-        // TODO: update best times in split file if they improve
+    if (split_file)
         fclose(split_file);
-    } else {
+    else {
         char splits_name[MAX_SPLIT_NAME_LEN];
 
         // Discard sent input
@@ -66,7 +64,7 @@ void saveSplits(const struct split* restrict splits,
 
         if (strcmp(splits_name, "cancel")) { // "cancel" not read
             // Create the split file, failing if it already exists
-            const int fd = open(splits_name, // TODO: add a prefix
+            const int fd = open(splits_name,
                     O_CREAT | O_WRONLY | O_EXCL,
                     S_IRUSR | S_IWUSR);
             if (fd < 0) { // Failure
