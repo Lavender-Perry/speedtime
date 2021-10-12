@@ -18,7 +18,8 @@ void printTime(struct timeval time, struct timeval start_time) {
  * arg_ptr & return value must be void* for pthread */
 void* timer(void* arg_ptr) {
     struct thread_args* args = arg_ptr;
-    int minutes, seconds = 0;
+    int minutes = 0;
+    int seconds = 0;
     while (args->run_thread) {
         sleep(1);
         if (seconds == 59) {

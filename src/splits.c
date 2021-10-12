@@ -33,56 +33,58 @@ int getSplitsFromInput(struct split* restrict buf) {
 void saveSplits(const struct split* restrict splits,
         FILE* restrict split_file,
         int split_amount) {
-    if (split_file)
+    if (split_file) {
         fclose(split_file);
-    else {
-        char splits_name[MAX_SPLIT_NAME_LEN];
+        return;
+    }
 
-        // Discard sent input
-        struct pollfd stdin_pollfd = {fd: STDIN_FILENO, events: POLLIN};
-        while (poll(&stdin_pollfd, 1, 0)
-                && stdin_pollfd.revents & POLLIN
-                && getc(stdin) != EOF)
-            /* Discard input */;
+    char splits_name[MAX_SPLIT_NAME_LEN];
 
-        puts("Now saving the new splits. "
-                "Please press enter with the program window/console focused.");
+    // Discard sent input
+    struct pollfd stdin_pollfd = {fd: STDIN_FILENO, events: POLLIN};
+    while (poll(&stdin_pollfd, 1, 0)
+            && stdin_pollfd.revents & POLLIN
+            && getc(stdin) != EOF)
+        /* Discard input */;
 
-        // Wait for send, then discard previously unsent input.
-        // This is not the final value for splits_name, it is being used as a buffer for
-        // discarded input.
+    puts("Now saving the new splits. "
+            "Please press enter with the program window/console focused.");
+
+    // Wait for send, then discard previously unsent input.
+    // This is not the final value for splits_name, it is being used as a buffer for
+    // discarded input.
+    if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
+        goto input_read_err;
+
+    // Get name to save splits as
+    puts("Please enter the name you would like to save the splits as.\n"
+            "Or enter \"cancel\" (without quotes) to not save the splits.");
+    do
         if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
             goto input_read_err;
+    while (splits_name[0] == '\0');
 
-        // Get name to save splits as
-        puts("Please enter the name you would like to save the splits as.\n"
-                "Or enter \"cancel\" (without quotes) to not save the splits.");
-        do
-            if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
-                goto input_read_err;
-        while (splits_name[0] == '\0');
-
-        if (strcmp(splits_name, "cancel")) { // "cancel" not read
-            // Create the split file, failing if it already exists
-            const int fd = open(splits_name,
-                    O_CREAT | O_WRONLY | O_EXCL,
-                    S_IRUSR | S_IWUSR);
-            if (fd < 0) { // Failure
-                perror("open");
-                return;
-            }
-            // Save splits to file
-            const ssize_t write_amount = sizeof(struct split) * split_amount;
-            if (write(fd, splits, write_amount) == write_amount)
-                puts("Splits successfully saved.");
-            else
-                fputs("Error saving splits.\n", stderr);
-            // Close file
-            if (close(fd) == -1)
-                perror("close");
+    if (strcmp(splits_name, "cancel")) { // "cancel" not read
+        // Create the split file, failing if it already exists
+        const int fd = open(splits_name,
+                O_CREAT | O_WRONLY | O_EXCL,
+                S_IRUSR | S_IWUSR);
+        if (fd < 0) { // Failure
+            perror("open");
+            return;
         }
+        // Save splits to file
+        const ssize_t write_amount = sizeof(struct split) * split_amount;
+        if (write(fd, splits, write_amount) == write_amount)
+            puts("Splits successfully saved.");
+        else
+            fputs("Error saving splits.\n", stderr);
+        // Close file
+        if (close(fd) == -1)
+            perror("close");
     }
     return;
+
 input_read_err:
     fputs("Error reading your input.\n", stderr);
 }
@@ -91,11 +93,11 @@ input_read_err:
  * & moving the cursor to where the time should be printed for the next. */
 void startSplit(struct timeval start_time, bool first_split, pthread_mutex_t* mtx_ptr) {
     static struct timeval begin_time;
-    if (first_split)
+    if (first_split) {
         begin_time = start_time;
-    else {
-        pthread_mutex_lock(mtx_ptr);
-        printTime(start_time, begin_time);
-        pthread_mutex_unlock(mtx_ptr);
+        return;
     }
+    pthread_mutex_lock(mtx_ptr);
+    printTime(start_time, begin_time);
+    pthread_mutex_unlock(mtx_ptr);
 }
