@@ -91,13 +91,16 @@ input_read_err:
 
 /* Starts the split, by printing the time for the previous
  * & moving the cursor to where the time should be printed for the next. */
-void startSplit(struct timeval start_time, bool first_split, pthread_mutex_t* mtx_ptr) {
+void startSplit(struct timeval start_time,
+        pthread_mutex_t* mtx_ptr,
+        bool first_split,
+        bool parse_mode) {
     static struct timeval begin_time;
     if (first_split) {
         begin_time = start_time;
         return;
     }
     pthread_mutex_lock(mtx_ptr);
-    printTime(start_time, begin_time);
+    printTime(start_time, begin_time, parse_mode);
     pthread_mutex_unlock(mtx_ptr);
 }

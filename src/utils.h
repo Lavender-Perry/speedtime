@@ -3,6 +3,7 @@
 
 // Requires stdbool.h & pthread.h
 struct thread_args {
+    bool parse_mode;
     bool run_thread;
     pthread_mutex_t* mtx_ptr;
 };

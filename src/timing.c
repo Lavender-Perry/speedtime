@@ -7,11 +7,17 @@
 #include "utils.h"
 
 /* Prints elapsed time using the current timeval & starting timeval; */
-void printTime(struct timeval time, struct timeval start_time) {
+void printTime(struct timeval time, struct timeval start_time, bool parse_mode) {
     const long tv = (time.tv_sec - start_time.tv_sec) * 100
         + (time.tv_usec - start_time.tv_usec) / 10000;
-    printf("%.2ld:%.2ld.%.2ld\033[8D\033[1B", tv / 6000, tv / 100 % 60, tv % 100);
-    fflush(stdout);
+
+    printf("%.2ld:%.2ld.%.2ld", tv / 6000, tv / 100 % 60, tv % 100);
+    if (parse_mode)
+        puts("");
+    else {
+        fputs("\033[8D\033[1B", stdout);
+        fflush(stdout);
+    }
 }
 
 /* Updates the time every second
@@ -21,16 +27,24 @@ void* timer(void* arg_ptr) {
     int minutes = 0;
     int seconds = 0;
     while (args->run_thread) {
+        pthread_mutex_lock(args->mtx_ptr);
+
+        printf("%.2d:%.2d", minutes, seconds);
+        if (args->parse_mode)
+            puts("");
+        else {
+            fputs("\033[5D", stdout);
+            fflush(stdout);
+        }
+        
+        pthread_mutex_unlock(args->mtx_ptr);
+
         sleep(1);
         if (seconds == 59) {
             seconds = 0;
             minutes++;
         } else
             seconds++;
-        pthread_mutex_lock(args->mtx_ptr);
-        printf("%.2d:%.2d\033[5D", minutes, seconds);
-        fflush(stdout);
-        pthread_mutex_unlock(args->mtx_ptr);
     }
     pthread_exit(NULL);
 }

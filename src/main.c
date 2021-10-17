@@ -24,10 +24,11 @@ int main(int argc, char** argv) {
     int split_amount = 1;
     struct split splits[MAX_SPLITS];
     bool run_with_splits = false;
+    bool parse_mode = false;
 
     /* Argument parsing */
     int opt;
-    while ((opt = getopt(argc, argv, "f:k:c:l:s")) != -1)
+    while ((opt = getopt(argc, argv, "f:k:c:l:sp")) != -1)
         switch (opt) {
             case 'f': // Set path to file for monitoring key events
                 key_event_path = optarg;
@@ -39,7 +40,7 @@ int main(int argc, char** argv) {
                 set_key(&timerCtrl_key, optarg);
                 break;
             case 'l': // Load splits from file specified by optarg
-                split_file = fopen(optarg, "rw"); // TODO: add a prefix
+                split_file = fopen(optarg, "rw");
                 if (!split_file)
                     goto fopen_err;
                 split_amount = fread(splits,
@@ -54,6 +55,9 @@ split_check:
                     run_with_splits = true;
                 else
                     fputs("No splits could be read\n", stderr);
+                break;
+            case 'p':
+                parse_mode = true;
                 break;
         }
 
@@ -79,14 +83,15 @@ split_check:
     term.c_lflag &= ~ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
-    fputs("\033[H\033[J", stdout); // Clear console
-
-    if (run_with_splits) {
-        // Print split names on seperate lines
-        for (int i = 0; i < split_amount; i++)
-            puts(splits[i].name);
-        // Move cursor
-        printf("\033[0;%dH", MAX_SPLIT_NAME_LEN + 1);
+    if (!parse_mode) {
+        fputs("\033[H\033[J", stdout); // Clear console
+        if (run_with_splits) {
+            // Print split names on seperate lines
+            for (int i = 0; i < split_amount; i++)
+                puts(splits[i].name);
+            // Move cursor
+            printf("\033[0;%dH", MAX_SPLIT_NAME_LEN + 1);
+        }
     }
 
     /* Wait until timer control key pressed to start the timer */
@@ -98,12 +103,14 @@ split_check:
     } while (keyPressedResult != timerCtrl_key);
 
     /* Start the timer */
-    startSplit(start_time, true, NULL);
+    startSplit(start_time, NULL, true, parse_mode);
+    if (parse_mode)
+        puts(splits[0].name);
 
     pthread_t timer_thread_id;
     pthread_mutex_t timer_mtx;
     pthread_mutex_init(&timer_mtx, NULL);
-    struct thread_args timer_args = {true, &timer_mtx};
+    struct thread_args timer_args = {parse_mode, true, &timer_mtx};
     if (pthread_create(&timer_thread_id, NULL, timer, &timer_args)) {
         fputs("Error creating timer thread\n", stderr);
         goto program_end;
@@ -120,8 +127,10 @@ split_check:
         if (keyPressedResult == timerCtrl_key) {
             if (current_split == split_amount)
                 break;
+            if (parse_mode)
+                puts(splits[current_split].name);
             current_split++;
-            startSplit(current_time, false, timer_args.mtx_ptr);
+            startSplit(current_time, timer_args.mtx_ptr, false, parse_mode);
         }
     } while (keyPressedResult != stop_key);
 
@@ -130,13 +139,13 @@ split_check:
     if (pthread_join(timer_thread_id, NULL) == -1)
         perror("pthread_join");
 
-    printTime(current_time, start_time);
+    printTime(current_time, start_time, parse_mode);
 
-    if (run_with_splits)
+    if (run_with_splits && !parse_mode)
         printf("\033[%d;0H", split_amount + 1); // Move to after splits
 
     if (errno)
-        puts("The printed time is most likely NOT accurate!");
+        fputs("The printed time is most likely NOT accurate!\n", stderr);
 
     pthread_mutex_destroy(&timer_mtx);
 
