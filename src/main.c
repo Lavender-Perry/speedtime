@@ -76,14 +76,14 @@ split_check:
 
     /* Set up for starting the timer */
     struct timeval start_time, current_time;
-
-    // Do not echo input
     struct termios term;
-    tcgetattr(STDIN_FILENO, &term);
-    term.c_lflag &= ~ECHO;
-    tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
     if (!parse_mode) {
+        // Do not echo input
+        tcgetattr(STDIN_FILENO, &term);
+        term.c_lflag &= ~ECHO;
+        tcsetattr(STDIN_FILENO, TCSANOW, &term);
+
         fputs("\033[H\033[J", stdout); // Clear console
         if (run_with_splits) {
             // Print split names on seperate lines
@@ -151,9 +151,12 @@ split_check:
 
 program_end:
     fclose(key_event_fp);
-    // Allow echoing input again
-    term.c_lflag |= ECHO;
-    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+
+    if (!parse_mode) {
+        // Allow echoing input again
+        term.c_lflag |= ECHO;
+        tcsetattr(STDIN_FILENO, TCSANOW, &term);
+    }
 
     if (run_with_splits)
         saveSplits(splits, split_file, split_amount);
