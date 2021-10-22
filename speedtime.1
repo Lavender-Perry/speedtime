@@ -1,16 +1,10 @@
-.TH SPEEDTIME 1 "2021-10-16" "development version"
+.TH SPEEDTIME 1 "2021-10-21" "development version"
 
 .SH NAME
 speedtime - a timer for Linux.
 
 .SH SYNOPSIS
-.B speedtime
-[-f \fIfilename\fP]
-[-k \fIkeycode\fP]
-[-c \fIkeycode\fP]
-[-l \fIfilename\fP] 
-[-s]
-[-p]
+.B speedtime [OPTIONS]
 
 .SH DESCRIPTION
 \fBspeedtime\fP is a timer for Linux that runs entirely within a terminal.
@@ -46,6 +40,17 @@ Create new splits.  Can not be used with \fB-l\fP.
 .RS 4
 Turns on parse mode.  Useful for programs that need to parse speedtime's output.
 In parse mode all output is printed on seperate lines & there is no ANSI escape codes.
+.RE
+.PP
+\fB-i\fP
+.RS 4
+Prints basic info about the program settings.
+These are: control key, stop key, max amount of splits, & max split name length.
+.RE
+.PP
+\fB-e\fP
+.RS 4
+Immediately exits the program.
 .RE
 
 .SH AUTHOR

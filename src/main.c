@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
 
     /* Argument parsing */
     int opt;
-    while ((opt = getopt(argc, argv, "f:k:c:l:sp")) != -1)
+    while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1)
         switch (opt) {
             case 'f': // Set path to file for monitoring key events
                 key_event_path = optarg;
@@ -56,9 +56,17 @@ split_check:
                 else
                     fputs("No splits could be read\n", stderr);
                 break;
-            case 'p':
+            case 'p': // Turn on parse mode
                 parse_mode = true;
                 break;
+            case 'i': // Print some info
+                printf("control key: %d\n", timerCtrl_key);
+                printf("stop key: %d\n", stop_key);
+                printf("max splits: %d\n", MAX_SPLITS);
+                printf("max split name length: %d\n", MAX_SPLIT_NAME_LEN);
+                break;
+            case 'e':
+                return 0;
         }
 
     if (!key_event_path) { // No custom file path given
