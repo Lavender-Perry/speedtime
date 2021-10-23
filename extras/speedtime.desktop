@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Speedtime
+GenericName=Timer
+Comment=A timer for Linux
+TryExec=speedtime
+Exec=speedtime
+Terminal=true
+Type=Application
+Keywords=timer;
+Icon=speedtime
+Categories=Utility;
+StartupNotify=false
