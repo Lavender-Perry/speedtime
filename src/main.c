@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <termios.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -17,7 +18,8 @@
 /* Argument parsing, event loop, etc. */
 int main(int argc, char** argv) {
     /* Variables that could be set by argument parsing */
-    char* key_event_path = NULL;
+    char* key_event_paths[MAX_KEYBOARDS] = {NULL};
+    int keyboard_amount = 0;
     __u16 stop_key = DEFAULT_STOP_KEY;
     __u16 timerCtrl_key = DEFAULT_CONTROL_KEY;
     FILE* split_file = NULL;
@@ -30,8 +32,10 @@ int main(int argc, char** argv) {
     int opt;
     while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1)
         switch (opt) {
-            case 'f': // Set path to file for monitoring key events
-                key_event_path = optarg;
+            case 'f': // Set paths to files for monitoring key events
+                keyboard_amount = getKeyEventPaths(key_event_paths,
+                        MAX_KEYBOARDS,
+                        optarg);
                 break;
             case 'k': // Set key to stop the timer
                 set_key(&stop_key, optarg);
@@ -41,8 +45,10 @@ int main(int argc, char** argv) {
                 break;
             case 'l': // Load splits from file specified by optarg
                 split_file = fopen(optarg, "rw");
-                if (!split_file)
-                    goto fopen_err;
+                if (!split_file) {
+                    perror("Invalid split file given");
+                    return errno;
+                }
                 split_amount = fread(splits,
                         sizeof(struct split),
                         MAX_SPLITS,
@@ -64,23 +70,35 @@ split_check:
                 printf("stop key: %d\n", stop_key);
                 printf("max splits: %d\n", MAX_SPLITS);
                 printf("max split name length: %d\n", MAX_SPLIT_NAME_LEN);
+                printf("max keyboards: %d\n", MAX_KEYBOARDS);
                 break;
             case 'e':
                 return 0;
         }
 
-    if (!key_event_path) { // No custom file path given
-        key_event_path = getKeyEventFile();
-        if (!key_event_path) {
+    if (!keyboard_amount) {
+        keyboard_amount = getKeyEventPaths(key_event_paths, MAX_KEYBOARDS, NULL);
+        if (!keyboard_amount) {
             fputs("Error finding the keyboard event file.\n"
                     "Please specify the file by adding the arguments "
                     "\"-f /path/to/event_file\"\n", stderr);
             return errno;
         }
     }
-    FILE* key_event_fp = fopen(key_event_path, "r");
-    if (!key_event_fp)
-        goto fopen_err;
+    FILE* key_event_files[keyboard_amount];
+    for (int i = 0; i < keyboard_amount; i++) {
+        key_event_files[i] = fopen(key_event_paths[i], "r");
+        if (!key_event_files[i]) {
+            char err_msg[25 + sizeof(key_event_paths[i])] = "fopen on key event file ";
+            strcat(err_msg, key_event_paths[i]);
+
+            while (--i >= 0)
+                fclose(key_event_files[i]);
+
+            perror(err_msg);
+            return errno;
+        }
+    }
 
     /* Set up for starting the timer */
     struct timeval start_time, current_time;
@@ -104,9 +122,10 @@ split_check:
 
     /* Wait until timer control key pressed to start the timer */
     __u16 keyPressedResult;
+    keyPressed(key_event_files, keyboard_amount, NULL); // Prepare function
     do {
-        keyPressedResult = keyPressed(key_event_fp, &start_time);
-        if (keyPressedResult == 0xffff)
+        keyPressedResult = keyPressed(key_event_files, keyboard_amount, &start_time);
+        if (keyPressedResult == 0)
             goto program_end;
     } while (keyPressedResult != timerCtrl_key);
 
@@ -127,8 +146,8 @@ split_check:
     int current_split = 1;
 
     do {
-        keyPressedResult = keyPressed(key_event_fp, &current_time);
-        if (keyPressedResult == 0xffff) {
+        keyPressedResult = keyPressed(key_event_files, keyboard_amount, &current_time);
+        if (keyPressedResult == 0) {
             perror("Error getting key press");
             break;
         }
@@ -158,7 +177,8 @@ split_check:
     pthread_mutex_destroy(&timer_mtx);
 
 program_end:
-    fclose(key_event_fp);
+    for (int i = 0; i < keyboard_amount; i++)
+        fclose(key_event_files[i]);
 
     if (!parse_mode) {
         // Allow echoing input again
@@ -168,9 +188,5 @@ program_end:
 
     if (run_with_splits)
         saveSplits(splits, split_file, split_amount);
-    return errno;
-
-fopen_err:
-    perror("fopen");
     return errno;
 }

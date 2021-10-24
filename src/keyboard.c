@@ -4,22 +4,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <poll.h>
 
-/* Autodetects & returns the path of the file that stores keyboard events */
-char* getKeyEventFile(void) {
-    static char return_value[20] = {0};
+#include "compile_settings.h"
+
+/* Gives to buf the path of the files that store keyboard events
+ * Uses optarg if it is given, otherwise autodetects the paths
+ * Returns amount found, or 0 on error/none read */
+int getKeyEventPaths(char** restrict buf, int max, char* optarg) {
+    int path_amount = 0;
+
+    if (optarg) {
+        const char splitter[] = ",";
+        buf[path_amount] = strtok(optarg, splitter);
+        while (buf[path_amount] != NULL && path_amount < max) {
+            path_amount++;
+            buf[path_amount] = strtok(NULL, splitter);
+        }
+        return path_amount;
+    }
+
+    // No optarg given, autodetect key files
 
     // /proc/bus/input/devices gives a list of devices & info about them
     FILE* devices_list = fopen("/proc/bus/input/devices", "r");
     if (!devices_list) {
         perror("fopen");
-        return return_value;
+        return 0;
     }
 
     char line[100];
     char* event_handler;
 
-    while (fgets(line, sizeof(line), devices_list) != NULL) {
+    while (fgets(line, sizeof(line), devices_list) != NULL && path_amount < max) {
         if (event_handler) {
             const char strcheck[] = "B: EV=120013";
             const size_t checklen = strlen(strcheck);
@@ -28,9 +45,12 @@ char* getKeyEventFile(void) {
                     && !strncmp(line, strcheck, checklen)) { // Device is a keyboard
                 const char* input_dir = "/dev/input/";
 
-                strcpy(return_value, input_dir);
-                strcat(return_value, event_handler);
-                break;
+                strcpy(buf[path_amount], input_dir);
+                strcat(buf[path_amount], event_handler);
+
+                event_handler = NULL;
+                path_amount++;
+                continue;
             }
         }
         if (line[0] == 'H') {
@@ -48,7 +68,7 @@ char* getKeyEventFile(void) {
         }
     }
     fclose(devices_list);
-    return return_value;
+    return path_amount;
 }
 
 /* Sets key variable to value from optarg.
@@ -61,15 +81,37 @@ void set_key(__u16* restrict key, char* optarg) {
         *key = atoi_res;
 }
 
-/* Checks if key was pressed until one is, & sets when to the time it was pressed
- * Returns: 0xffff on error getting event, or the key that was pressed */
-__u16 keyPressed(FILE* keyboard_event_fp, struct timeval* restrict when) {
-    struct input_event event;
-    while (fread(&event, sizeof(event), 1, keyboard_event_fp) == 1)
-        if (event.type == EV_KEY && event.value) {
-            *when = event.time;
-            return event.code;
+/* Checks if key was pressed until one is, & sets when to the time it was pressed.
+ * Must be called with the same values for files & file_amount every time.
+ * On first call, when should be NULL.  It sets up the pollfds on first call.
+ * Returns: file_amount on first call,
+ *          0 on error getting event,
+ *          otherwise the key that was pressed */
+__u16 keyPressed(FILE** files, int file_amount, struct timeval* restrict when) {
+    static struct pollfd file_pollfds[MAX_KEYBOARDS];
+
+    if (!when) {
+        for (int i = 0; i < file_amount; i++)
+            file_pollfds[i] = (struct pollfd) { fileno(files[i]), POLLIN, 0 };
+        return file_amount;
+    }
+
+    while (poll(file_pollfds, file_amount, -1) != -1)
+        for (int i = 0; i < file_amount; i++) {
+            if (file_pollfds[i].revents & POLLERR)
+                return 0;
+
+            if (file_pollfds[i].revents & POLLIN) {
+                struct input_event event;
+                if (fread(&event, sizeof(event), 1, files[i]) != 1)
+                    return 0;
+
+                if (event.type == EV_KEY && event.value) {
+                    *when = event.time;
+                    return event.code;
+                }
+            }
         }
-    // Error
-    return 0xffff;
+
+    return 0;
 }
