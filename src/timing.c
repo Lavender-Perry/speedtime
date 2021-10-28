@@ -46,5 +46,5 @@ void* timer(void* arg_ptr) {
         } else
             seconds++;
     }
-    pthread_exit(NULL);
+    return NULL;
 }

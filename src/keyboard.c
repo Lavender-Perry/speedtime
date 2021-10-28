@@ -11,15 +11,15 @@
 /* Gives to buf the path of the files that store keyboard events
  * Uses optarg if it is given, otherwise autodetects the paths
  * Returns amount found, or 0 on error/none read */
-int getKeyEventPaths(char** restrict buf, int max, char* optarg) {
+int getKeyEventPaths(char buf[MAX_KEYBOARDS][MAX_KEYBOARD_PATH_LEN], char* optarg) {
     int path_amount = 0;
 
     if (optarg) {
         const char splitter[] = ",";
-        buf[path_amount] = strtok(optarg, splitter);
-        while (buf[path_amount] != NULL && path_amount < max) {
+        strcpy(buf[path_amount], strtok(optarg, splitter));
+        while (buf[path_amount] != NULL && path_amount < MAX_KEYBOARDS) {
             path_amount++;
-            buf[path_amount] = strtok(NULL, splitter);
+            strcpy(buf[path_amount], strtok(NULL, splitter));
         }
         return path_amount;
     }
@@ -36,7 +36,8 @@ int getKeyEventPaths(char** restrict buf, int max, char* optarg) {
     char line[100];
     char* event_handler;
 
-    while (fgets(line, sizeof(line), devices_list) != NULL && path_amount < max) {
+    while (fgets(line, sizeof(line), devices_list) != NULL
+            && path_amount < MAX_KEYBOARDS) {
         if (event_handler) {
             const char strcheck[] = "B: EV=120013";
             const size_t checklen = strlen(strcheck);
@@ -83,18 +84,11 @@ void set_key(__u16* restrict key, char* optarg) {
 
 /* Checks if key was pressed until one is, & sets when to the time it was pressed.
  * Must be called with the same values for files & file_amount every time.
- * On first call, when should be NULL.  It sets up the pollfds on first call.
- * Returns: file_amount on first call,
- *          0 on error getting event,
- *          otherwise the key that was pressed */
+ * Returns: 0 on error getting event, otherwise the key that was pressed */
 __u16 keyPressed(FILE** files, int file_amount, struct timeval* restrict when) {
-    static struct pollfd file_pollfds[MAX_KEYBOARDS];
-
-    if (!when) {
-        for (int i = 0; i < file_amount; i++)
-            file_pollfds[i] = (struct pollfd) { fileno(files[i]), POLLIN, 0 };
-        return file_amount;
-    }
+    struct pollfd file_pollfds[file_amount];
+    for (int i = 0; i < file_amount; i++)
+        file_pollfds[i] = (struct pollfd) { fileno(files[i]), POLLIN, 0 };
 
     while (poll(file_pollfds, file_amount, -1) != -1)
         for (int i = 0; i < file_amount; i++) {

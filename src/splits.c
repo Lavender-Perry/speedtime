@@ -41,7 +41,7 @@ void saveSplits(const struct split* restrict splits,
     char splits_name[MAX_SPLIT_NAME_LEN];
 
     // Discard sent input
-    struct pollfd stdin_pollfd = {fd: STDIN_FILENO, events: POLLIN};
+    struct pollfd stdin_pollfd = {STDIN_FILENO, POLLIN, 0};
     while (poll(&stdin_pollfd, 1, 0)
             && stdin_pollfd.revents & POLLIN
             && getc(stdin) != EOF)

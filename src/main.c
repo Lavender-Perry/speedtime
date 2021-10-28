@@ -18,7 +18,7 @@
 /* Argument parsing, event loop, etc. */
 int main(int argc, char** argv) {
     /* Variables that could be set by argument parsing */
-    char* key_event_paths[MAX_KEYBOARDS] = {NULL};
+    char key_event_paths[MAX_KEYBOARDS][MAX_KEYBOARD_PATH_LEN];
     int keyboard_amount = 0;
     __u16 stop_key = DEFAULT_STOP_KEY;
     __u16 timerCtrl_key = DEFAULT_CONTROL_KEY;
@@ -33,9 +33,7 @@ int main(int argc, char** argv) {
     while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1)
         switch (opt) {
             case 'f': // Set paths to files for monitoring key events
-                keyboard_amount = getKeyEventPaths(key_event_paths,
-                        MAX_KEYBOARDS,
-                        optarg);
+                keyboard_amount = getKeyEventPaths(key_event_paths, optarg);
                 break;
             case 'k': // Set key to stop the timer
                 set_key(&stop_key, optarg);
@@ -77,7 +75,7 @@ split_check:
         }
 
     if (!keyboard_amount) {
-        keyboard_amount = getKeyEventPaths(key_event_paths, MAX_KEYBOARDS, NULL);
+        keyboard_amount = getKeyEventPaths(key_event_paths, NULL);
         if (!keyboard_amount) {
             fputs("Error finding the keyboard event file.\n"
                     "Please specify the file by adding the arguments "
@@ -122,7 +120,6 @@ split_check:
 
     /* Wait until timer control key pressed to start the timer */
     __u16 keyPressedResult;
-    keyPressed(key_event_files, keyboard_amount, NULL); // Prepare function
     do {
         keyPressedResult = keyPressed(key_event_files, keyboard_amount, &start_time);
         if (keyPressedResult == 0)
