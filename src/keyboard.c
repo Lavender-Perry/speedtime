@@ -8,68 +8,82 @@
 
 #include "compile_settings.h"
 
-/* Gives to buf the path of the files that store keyboard events
- * Uses optarg if it is given, otherwise autodetects the paths
- * Returns amount found, or 0 on error/none read */
-int getKeyEventPaths(char buf[MAX_KEYBOARDS][MAX_KEYBOARD_PATH_LEN], char* optarg) {
-    int path_amount = 0;
+/* Gives to buf the files that store keyboard events.
+ * Uses optarg if it is given, otherwise autodetects the paths.
+ * Returns amount found, or 0 on error/none read. */
+int getKeyEventFiles(FILE* buf[MAX_KEYBOARDS], char* optarg) {
+    int file_amount = 0;
+    char paths[MAX_KEYBOARDS][MAX_KEYBOARD_PATH_LEN];
 
     if (optarg) {
         const char splitter[] = ",";
-        strcpy(buf[path_amount], strtok(optarg, splitter));
-        while (buf[path_amount] != NULL && path_amount < MAX_KEYBOARDS) {
-            path_amount++;
-            strcpy(buf[path_amount], strtok(NULL, splitter));
+        strcpy(paths[file_amount], strtok(optarg, splitter));
+        while (paths[file_amount] != NULL && file_amount < MAX_KEYBOARDS) {
+            file_amount++;
+            strcpy(paths[file_amount], strtok(NULL, splitter));
         }
-        return path_amount;
-    }
+    } else {
+        // /proc/bus/input/devices gives a list of devices & info about them
+        FILE* devices_list = fopen("/proc/bus/input/devices", "r");
+        if (!devices_list) {
+            perror("fopen");
+            return 0;
+        }
 
-    // No optarg given, autodetect key files
+        char line[100];
+        char* event_handler;
 
-    // /proc/bus/input/devices gives a list of devices & info about them
-    FILE* devices_list = fopen("/proc/bus/input/devices", "r");
-    if (!devices_list) {
-        perror("fopen");
-        return 0;
-    }
+        while (fgets(line, sizeof(line), devices_list) != NULL
+                && file_amount < MAX_KEYBOARDS) {
+            if (event_handler) {
+                const char strcheck[] = "B: EV=120013";
+                const size_t checklen = strlen(strcheck);
 
-    char line[100];
-    char* event_handler;
+                if (strlen(line) >= checklen
+                        && !strncmp(line, strcheck, checklen)) { // Device is a keyboard
+                    const char* input_dir = "/dev/input/";
 
-    while (fgets(line, sizeof(line), devices_list) != NULL
-            && path_amount < MAX_KEYBOARDS) {
-        if (event_handler) {
-            const char strcheck[] = "B: EV=120013";
-            const size_t checklen = strlen(strcheck);
+                    strcpy(paths[file_amount], input_dir);
+                    strcat(paths[file_amount], event_handler);
 
-            if (strlen(line) >= checklen
-                    && !strncmp(line, strcheck, checklen)) { // Device is a keyboard
-                const char* input_dir = "/dev/input/";
+                    event_handler = NULL;
+                    file_amount++;
+                    continue;
+                }
+            }
+            if (line[0] == 'H') {
+                // Event string has either a space or '=' before it
+                const char splitter[] = "= ";
 
-                strcpy(buf[path_amount], input_dir);
-                strcat(buf[path_amount], event_handler);
+                const char strcheck[] = "event";
+                const size_t checklen = strlen(strcheck);
 
-                event_handler = NULL;
-                path_amount++;
-                continue;
+                event_handler = strtok(line, splitter);
+                while ((strlen(event_handler) < checklen
+                        || strncmp(event_handler, strcheck, checklen))
+                        && event_handler != NULL)
+                    event_handler = strtok(NULL, splitter);
             }
         }
-        if (line[0] == 'H') {
-            // Event string has either a space or '=' before it
-            const char splitter[] = "= ";
 
-            const char strcheck[] = "event";
-            const size_t checklen = strlen(strcheck);
+        fclose(devices_list);
+    }
 
-            event_handler = strtok(line, splitter);
-            while ((strlen(event_handler) < checklen
-                    || strncmp(event_handler, strcheck, checklen))
-                    && event_handler != NULL)
-                event_handler = strtok(NULL, splitter);
+    for (int i = 0; i < file_amount; i++) {
+        buf[i] = fopen(paths[i], "rb");
+        if (!buf[i]) {
+            char err_msg[25 + MAX_KEYBOARD_PATH_LEN] = "fopen on key event file ";
+            strcat(err_msg, paths[i]);
+
+            while (--i >= 0)
+                fclose(buf[i]);
+
+            perror(err_msg);
+            return 0;
         }
     }
-    fclose(devices_list);
-    return path_amount;
+
+    return file_amount;
 }
 
 /* Sets key variable to value from optarg.

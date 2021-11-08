@@ -1,7 +1,7 @@
 #ifndef KEYBOARD_EVENTS_H
 #define KEYBOARD_EVENTS_H
 
-int getKeyEventPaths(char buf[MAX_KEYBOARDS][MAX_KEYBOARD_PATH_LEN], char* optarg);
+int getKeyEventFiles(FILE* buf[MAX_KEYBOARDS], char* optarg);
 // Requires asm/types.h
 void set_key(__u16* restrict key, char* optarg);
 // Requires asm/types.h & sys/time.h

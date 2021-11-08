@@ -1,11 +1,11 @@
 #include <errno.h>
-#include <fcntl.h>
+#include <limits.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "compile_settings.h"
@@ -22,6 +22,7 @@ int getSplitsFromInput(struct split* restrict buf) {
             && i < MAX_SPLITS) {
         if (!buf[i].name)
             return -1;
+        buf[i].best_time = LONG_MAX;
         i++;
     }
 
@@ -29,11 +30,17 @@ int getSplitsFromInput(struct split* restrict buf) {
 }
 
 /* Saves new splits, prompting for the file to save them in, or updates existing splits
- * if the best times improve. */
+ * to have the new best times. */
 void saveSplits(const struct split* restrict splits,
-        FILE* restrict split_file,
-        int split_amount) {
+        size_t split_amount,
+        FILE* restrict split_file) {
     if (split_file) {
+        if (fseek(split_file, 0, SEEK_SET))
+            perror("fseek");
+        else
+            if (fwrite(splits, sizeof(struct split), split_amount, split_file)
+                    != split_amount)
+                perror("fwrite");
         fclose(split_file);
         return;
     }
@@ -65,23 +72,20 @@ void saveSplits(const struct split* restrict splits,
     while (splits_name[0] == '\0');
 
     if (strcmp(splits_name, "cancel")) { // "cancel" not read
-        // Create the split file, failing if it already exists
-        const int fd = open(splits_name,
-                O_CREAT | O_WRONLY | O_EXCL,
-                S_IRUSR | S_IWUSR);
-        if (fd < 0) { // Failure
-            perror("open");
+        if (!(split_file = fopen(splits_name, "w+bx"))) { // Open file/error handling
+            char err_msg[10 + MAX_SPLIT_NAME_LEN] = "fopen on ";
+            strcat(err_msg, splits_name);
+            perror(err_msg);
             return;
         }
-        // Save splits to file
-        const ssize_t write_amount = sizeof(struct split) * split_amount;
-        if (write(fd, splits, write_amount) == write_amount)
+
+        if (fwrite(splits, sizeof(struct split), split_amount, split_file)
+                == split_amount)
             puts("Splits successfully saved.");
         else
-            fputs("Error saving splits.\n", stderr);
-        // Close file
-        if (close(fd) == -1)
-            perror("close");
+            perror("fwrite");
+
+        fclose(split_file);
     }
     return;
 
@@ -89,18 +93,51 @@ input_read_err:
     fputs("Error reading your input.\n", stderr);
 }
 
-/* Starts the split, by printing the time for the previous
+/* Prints the split name, space for the time, & the best time for each split */
+void printSplits(const struct split* restrict splits, int split_amount) {
+    for (int i = 0; i < split_amount; i++) {
+        fputs(splits[i].name, stdout);
+
+        // Move cursor to make room for time
+        printf("\033[%dG", MAX_SPLIT_NAME_LEN + 10);
+
+        if (splits[i].best_time == LONG_MAX)
+            puts("--:--.--");
+        else
+            printTime(splits[i].best_time, true);
+    }
+
+    // Move cursor to time area of first split
+    printf("\033[0;%dH", MAX_SPLIT_NAME_LEN + 1);
+}
+
+/* Prints split name & best time for parse mode */
+void splitParseModePrint(const struct split* restrict split) {
+    puts(split->name);
+    fputs("best ", stdout);
+    printTime(split->best_time, true);
+}
+
+/* Starts the split by printing the time for the previous, updating best time if needed,
  * & moving the cursor to where the time should be printed for the next. */
 void startSplit(struct timeval start_time,
         pthread_mutex_t* mtx_ptr,
         bool first_split,
-        bool parse_mode) {
+        bool parse_mode,
+        long* restrict best_split_time) {
+
     static struct timeval begin_time;
     if (first_split) {
         begin_time = start_time;
         return;
     }
+
+    const long split_time = timeDiffToLong(start_time, begin_time);
+
+    if (best_split_time && split_time < *best_split_time)
+        *best_split_time = split_time;
+
     pthread_mutex_lock(mtx_ptr);
-    printTime(start_time, begin_time, parse_mode);
+    printTime(split_time, parse_mode);
     pthread_mutex_unlock(mtx_ptr);
 }

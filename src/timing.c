@@ -6,12 +6,16 @@
 
 #include "utils.h"
 
-/* Prints elapsed time using the current timeval & starting timeval; */
-void printTime(struct timeval time, struct timeval start_time, bool parse_mode) {
-    const long tv = (time.tv_sec - start_time.tv_sec) * 100
+/* Takes two timevals & returns the amount of centiseconds between them */
+long timeDiffToLong(struct timeval time, struct timeval start_time) {
+    return (time.tv_sec - start_time.tv_sec) * 100
         + (time.tv_usec - start_time.tv_usec) / 10000;
+}
 
+/* Prints elapsed time */
+void printTime(long tv, bool parse_mode) {
     printf("%.2ld:%.2ld.%.2ld", tv / 6000, tv / 100 % 60, tv % 100);
+
     if (parse_mode)
         puts("");
     else {

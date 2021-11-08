@@ -18,7 +18,7 @@
 /* Argument parsing, event loop, etc. */
 int main(int argc, char** argv) {
     /* Variables that could be set by argument parsing */
-    char key_event_paths[MAX_KEYBOARDS][MAX_KEYBOARD_PATH_LEN];
+    FILE* key_event_files[MAX_KEYBOARDS];
     int keyboard_amount = 0;
     __u16 stop_key = DEFAULT_STOP_KEY;
     __u16 timerCtrl_key = DEFAULT_CONTROL_KEY;
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
     while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1)
         switch (opt) {
             case 'f': // Set paths to files for monitoring key events
-                keyboard_amount = getKeyEventPaths(key_event_paths, optarg);
+                keyboard_amount = getKeyEventFiles(key_event_files, optarg);
                 break;
             case 'k': // Set key to stop the timer
                 set_key(&stop_key, optarg);
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
                 set_key(&timerCtrl_key, optarg);
                 break;
             case 'l': // Load splits from file specified by optarg
-                split_file = fopen(optarg, "rw");
+                split_file = fopen(optarg, "r+b");
                 if (!split_file) {
                     perror("Invalid split file given");
                     return errno;
@@ -74,28 +74,12 @@ split_check:
                 return 0;
         }
 
-    if (!keyboard_amount) {
-        keyboard_amount = getKeyEventPaths(key_event_paths, NULL);
-        if (!keyboard_amount) {
-            fputs("Error finding the keyboard event file.\n"
-                    "Please specify the file by adding the arguments "
-                    "\"-f /path/to/event_file\"\n", stderr);
-            return errno;
-        }
-    }
-    FILE* key_event_files[keyboard_amount];
-    for (int i = 0; i < keyboard_amount; i++) {
-        key_event_files[i] = fopen(key_event_paths[i], "r");
-        if (!key_event_files[i]) {
-            char err_msg[25 + sizeof(key_event_paths[i])] = "fopen on key event file ";
-            strcat(err_msg, key_event_paths[i]);
-
-            while (--i >= 0)
-                fclose(key_event_files[i]);
-
-            perror(err_msg);
-            return errno;
-        }
+    if (!keyboard_amount
+            && !(keyboard_amount = getKeyEventFiles(key_event_files, NULL))) {
+        fputs("Error finding the keyboard event files.\n"
+                "Please specify the files by adding the arguments "
+                "\"-f /path/to/event_file,/other/path,etc\"\n", stderr);
+        return errno;
     }
 
     /* Set up for starting the timer */
@@ -109,13 +93,9 @@ split_check:
         tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
         fputs("\033[H\033[J", stdout); // Clear console
-        if (run_with_splits) {
-            // Print split names on seperate lines
-            for (int i = 0; i < split_amount; i++)
-                puts(splits[i].name);
-            // Move cursor
-            printf("\033[0;%dH", MAX_SPLIT_NAME_LEN + 1);
-        }
+
+        if (run_with_splits)
+            printSplits(splits, split_amount);
     }
 
     /* Wait until timer control key pressed to start the timer */
@@ -127,9 +107,10 @@ split_check:
     } while (keyPressedResult != timerCtrl_key);
 
     /* Start the timer */
-    startSplit(start_time, NULL, true, parse_mode);
     if (parse_mode)
-        puts(splits[0].name);
+        splitParseModePrint(&splits[0]);
+
+    startSplit(start_time, NULL, true, parse_mode, NULL);
 
     pthread_t timer_thread_id;
     pthread_mutex_t timer_mtx;
@@ -149,12 +130,19 @@ split_check:
             break;
         }
         if (keyPressedResult == timerCtrl_key) {
+            startSplit(current_time,
+                    timer_args.mtx_ptr,
+                    false,
+                    parse_mode,
+                    run_with_splits ? &splits[current_split - 1].best_time : NULL);
+
             if (current_split == split_amount)
                 break;
+
             if (parse_mode)
-                puts(splits[current_split].name);
+                splitParseModePrint(&splits[current_split]);
+
             current_split++;
-            startSplit(current_time, timer_args.mtx_ptr, false, parse_mode);
         }
     } while (keyPressedResult != stop_key);
 
@@ -163,7 +151,7 @@ split_check:
     if (pthread_join(timer_thread_id, NULL) == -1)
         perror("pthread_join");
 
-    printTime(current_time, start_time, parse_mode);
+    printTime(timeDiffToLong(current_time, start_time), parse_mode);
 
     if (run_with_splits && !parse_mode)
         printf("\033[%d;0H", split_amount + 1); // Move to after splits
@@ -184,6 +172,6 @@ program_end:
     }
 
     if (run_with_splits)
-        saveSplits(splits, split_file, split_amount);
+        saveSplits(splits, split_amount, split_file);
     return errno;
 }
