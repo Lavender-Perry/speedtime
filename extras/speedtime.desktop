@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Speedtime
 GenericName=Timer
-Comment=A timer for Linux
+Comment=A timer
 TryExec=speedtime
 Exec=speedtime
 Terminal=true
