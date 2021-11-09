@@ -1,7 +1,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-// Requires stdbool.h & pthread.h
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdio.h>
+
 struct thread_args {
     bool parse_mode;
     bool run_thread;

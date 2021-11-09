@@ -5,8 +5,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <termios.h>
 #include <sys/time.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include "compile_settings.h"
