@@ -107,7 +107,7 @@ split_check:
     } while (keyPressedResult != timerCtrl_key);
 
     /* Start the timer */
-    if (parse_mode)
+    if (run_with_splits && parse_mode)
         splitParseModePrint(&splits[0]);
 
     startSplit(start_time, NULL, true, parse_mode, NULL);
@@ -139,7 +139,7 @@ split_check:
             if (current_split == split_amount)
                 break;
 
-            if (parse_mode)
+            if (run_with_splits && parse_mode)
                 splitParseModePrint(&splits[current_split]);
 
             current_split++;

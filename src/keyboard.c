@@ -31,7 +31,7 @@ int getKeyEventFiles(FILE* buf[MAX_KEYBOARDS], char* optarg) {
         }
 
         char line[100];
-        char* event_handler;
+        char* event_handler = NULL;
 
         while (fgets(line, sizeof(line), devices_list) != NULL
                 && file_amount < MAX_KEYBOARDS) {
