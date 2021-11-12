@@ -13,6 +13,7 @@ without having the window focused.
 1. Install a C compiler & change the Tupfile to build with that C compiler
 2. Install Tup
 3. Run `tup` in the directory of this repository.
+
 Builds are only confirmed to work with Clang & GCC on x86-64 Linux with glibc.
 \
 Builds do not work on non-Linux systems.
