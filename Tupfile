@@ -1,2 +1,4 @@
-: foreach src/*.c |> gcc @compile_flags.txt -c %f -o %o |> build/%B.c.o
-: build/*.o |> gcc -pthread %f -o %o |> speedtime
+COMPILER += clang
+
+: foreach src/*.c |> $(COMPILER) @compile_flags.txt -c %f -o %o |> build/%B.c.o
+: build/*.o |> $(COMPILER) -pthread %f -o %o |> speedtime

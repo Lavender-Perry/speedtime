@@ -18,13 +18,16 @@
 int getSplitsFromInput(struct split* restrict buf) {
     int i = 0; // Must be in this scope to return it
 
-    while (fgets_no_newline(buf[i].name, sizeof(buf[i].name), stdin)[0] != '\0'
-            && i < MAX_SPLITS) {
-        if (!buf[i].name)
+    do {
+        if (fgets_no_newline(buf[i].name, sizeof(buf[i].name), stdin) == NULL)
             return -1;
+
+        if (buf[i].name[0] == '\0')
+            break;
+
         buf[i].best_time = LONG_MAX;
         i++;
-    }
+    } while (i < MAX_SPLITS);
 
     return i;
 }
