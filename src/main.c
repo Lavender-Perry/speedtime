@@ -48,7 +48,6 @@ int main(int argc, char** argv) {
                     return errno;
                 }
                 split_amount = getSplits(split_file, splits);
-                printf("%i\n", split_amount); // DEBUG
                 goto split_check;
             case 's': // Create new splits
                 split_amount = getSplits(stdin, splits);
@@ -134,7 +133,7 @@ split_check:
                     parse_mode,
                     run_with_splits ? &splits[current_split - 1].best_time : NULL);
 
-            if (current_split == split_amount)
+            if (current_split == split_amount || !run_with_splits)
                 break;
 
             if (run_with_splits && parse_mode)
