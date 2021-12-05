@@ -42,18 +42,16 @@ int main(int argc, char** argv) {
                 set_key(&timerCtrl_key, optarg);
                 break;
             case 'l': // Load splits from file specified by optarg
-                split_file = fopen(optarg, "r+b");
+                split_file = fopen(optarg, "r+");
                 if (!split_file) {
                     perror("Invalid split file given");
                     return errno;
                 }
-                split_amount = fread(splits,
-                        sizeof(struct split),
-                        MAX_SPLITS,
-                        split_file);
+                split_amount = getSplits(split_file, splits);
+                printf("%i\n", split_amount); // DEBUG
                 goto split_check;
             case 's': // Create new splits
-                split_amount = getSplitsFromInput(splits);
+                split_amount = getSplits(stdin, splits);
 split_check:
                 if (split_amount > 0)
                     run_with_splits = true;
@@ -172,6 +170,6 @@ program_end:
     }
 
     if (run_with_splits)
-        saveSplits(splits, split_amount, split_file);
+        putSplits(splits, split_amount, split_file);
     return errno;
 }

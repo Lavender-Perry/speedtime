@@ -12,8 +12,8 @@ struct split {
     char name[MAX_SPLIT_NAME_LEN];
 };
 
-int getSplitsFromInput(struct split* restrict buf);
-void saveSplits(const struct split* restrict splits,
+int getSplits(FILE* file, struct split* restrict buf);
+void putSplits(const struct split* restrict splits,
         size_t split_amount,
         FILE* restrict split_file);
 void printSplits(const struct split* restrict splits, int split_amount);

@@ -1,9 +1,9 @@
 #include <errno.h>
-#include <limits.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -13,39 +13,46 @@
 #include "timing.h"
 #include "utils.h"
 
-/* Reads from stdin & puts splits in buf, returns amount of splits or -1 on error
+/* Reads from file & puts splits in buf, returns amount of splits or -1 on error
  * Stops when empty line read or on EOF */
-int getSplitsFromInput(struct split* restrict buf) {
+int getSplits(FILE* file, struct split* restrict buf) {
     int i = 0; // Must be in this scope to return it
 
-    do {
-        if (fgets_no_newline(buf[i].name, sizeof(buf[i].name), stdin) == NULL)
+    char* time_read_buf;
+    const int MAX_TIME_DIGITS = 20;
+    if (file != stdin && (time_read_buf = malloc(MAX_TIME_DIGITS)) == NULL)
+        return -1;
+
+    while (i < MAX_SPLITS
+            && fgets_no_newline(buf[i].name, sizeof(buf[i].name), file) != NULL
+            && buf[i].name[0]) {
+        if (file == stdin)
+            buf[i].best_time = 0;
+        else if (fgets_no_newline(time_read_buf, MAX_TIME_DIGITS, file) == NULL
+                || (buf[i].best_time = atol(time_read_buf)) == 0)
             return -1;
 
-        if (buf[i].name[0] == '\0')
-            break;
-
-        buf[i].best_time = LONG_MAX;
         i++;
-    } while (i < MAX_SPLITS);
+    }
+
+    if (file != stdin)
+        free(time_read_buf);
 
     return i;
 }
 
 /* Saves new splits, prompting for the file to save them in, or updates existing splits
  * to have the new best times. */
-void saveSplits(const struct split* restrict splits,
+void putSplits(const struct split* restrict splits,
         size_t split_amount,
         FILE* restrict split_file) {
     if (split_file) {
-        if (fseek(split_file, 0, SEEK_SET))
+        if (fseek(split_file, 0, SEEK_SET)) {
             perror("fseek");
-        else
-            if (fwrite(splits, sizeof(struct split), split_amount, split_file)
-                    != split_amount)
-                perror("fwrite");
-        fclose(split_file);
-        return;
+            return;
+        }
+
+        goto write_splits;
     }
 
     char splits_name[MAX_SPLIT_NAME_LEN];
@@ -54,42 +61,44 @@ void saveSplits(const struct split* restrict splits,
     struct pollfd stdin_pollfd = {STDIN_FILENO, POLLIN, 0};
     while (poll(&stdin_pollfd, 1, 0)
             && stdin_pollfd.revents & POLLIN
-            && getc(stdin) != EOF)
-        /* Discard input */;
+            && getc(stdin) != EOF);
 
     puts("Now saving the new splits. "
             "Please press enter with the program window/console focused.");
 
     // Wait for send, then discard previously unsent input.
-    // This is not the final value for splits_name, it is being used as a buffer for
-    // discarded input.
+    // This is not the final value for splits_name,
+    // it is being used as a buffer for discarded input.
     if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
         goto input_read_err;
 
-    // Get name to save splits as
     puts("Please enter the name you would like to save the splits as.\n"
             "Or enter \"cancel\" (without quotes) to not save the splits.");
     do
-        if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
+        if (fgets_no_newline(splits_name, sizeof(splits_name), stdin) == NULL)
             goto input_read_err;
     while (splits_name[0] == '\0');
 
     if (strcmp(splits_name, "cancel")) { // "cancel" not read
-        if (!(split_file = fopen(splits_name, "w+bx"))) { // Open file/error handling
+        if (!(split_file = fopen(splits_name, "w+x"))) { // Open file/error handling
             char err_msg[10 + MAX_SPLIT_NAME_LEN] = "fopen on ";
             strcat(err_msg, splits_name);
             perror(err_msg);
             return;
         }
 
-        if (fwrite(splits, sizeof(struct split), split_amount, split_file)
-                == split_amount)
-            puts("Splits successfully saved.");
-        else
-            perror("fwrite");
-
-        fclose(split_file);
+        goto write_splits;
     }
+
+    return;
+
+write_splits:
+    for (size_t i = 0; i < split_amount; i++)
+        if (fprintf(split_file, "%s\n%li\n", splits[i].name, splits[i].best_time) < 0) {
+            fputs("Error saving splits.\n", stderr);
+            break;
+        }
+    fclose(split_file);
     return;
 
 input_read_err:
@@ -104,7 +113,7 @@ void printSplits(const struct split* restrict splits, int split_amount) {
         // Move cursor to make room for time
         printf("\033[%dG", MAX_SPLIT_NAME_LEN + 10);
 
-        if (splits[i].best_time == LONG_MAX)
+        if (splits[i].best_time == 0)
             puts("--:--.--");
         else
             printTime(splits[i].best_time, true);
@@ -137,7 +146,7 @@ void startSplit(struct timeval start_time,
 
     const long split_time = timeDiffToLong(start_time, begin_time);
 
-    if (best_split_time && split_time < *best_split_time)
+    if (best_split_time && (split_time < *best_split_time || *best_split_time == 0))
         *best_split_time = split_time;
 
     pthread_mutex_lock(mtx_ptr);
