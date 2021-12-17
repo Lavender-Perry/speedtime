@@ -73,8 +73,8 @@ split_check:
 
     if (!keyboard_amount
             && !(keyboard_amount = getKeyEventFiles(key_event_files, NULL))) {
-        fputs("Error finding the keyboard event files.\n"
-                "Please specify the files by adding the arguments "
+        fputs("Error finding the keyboard event file(s).\n"
+                "Please specify the file(s) by adding the arguments "
                 "\"-f /path/to/event_file,/other/path,etc\"\n", stderr);
         return errno;
     }
