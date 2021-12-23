@@ -130,8 +130,7 @@ void splitParseModePrint(const struct split* restrict split) {
     printTime(split->best_time, true);
 }
 
-/* Starts the split by printing the time for the previous, updating best time if needed,
- * & moving the cursor to where the time should be printed for the next. */
+/* Starts the split by updating best time if needed & printing the time */
 void startSplit(struct timeval start_time,
         pthread_mutex_t* mtx_ptr,
         bool first_split,
@@ -146,10 +145,20 @@ void startSplit(struct timeval start_time,
 
     const long split_time = timeDiffToLong(start_time, begin_time);
 
-    if (best_split_time && (split_time < *best_split_time || *best_split_time == 0))
-        *best_split_time = split_time;
+    if (!parse_mode && best_split_time) {
+        int color_val = 33; // Yellow
+        if (split_time < *best_split_time || *best_split_time == 0) {
+            // Time is better than best
+            *best_split_time = split_time;
+            color_val = 32; // Green
+        } else if (split_time > *best_split_time)
+            // Time is worse than best
+            color_val = 31; // Red
+        printf("\033[%dm", color_val);
+    }
 
     pthread_mutex_lock(mtx_ptr);
     printTime(split_time, parse_mode);
     pthread_mutex_unlock(mtx_ptr);
+    fputs("\033[0m", stdout);
 }
