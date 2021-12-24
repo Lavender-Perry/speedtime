@@ -15,7 +15,8 @@
 
 /* Reads from file & puts splits in buf, returns amount of splits or -1 on error
  * Stops when empty line read or on EOF */
-int getSplits(FILE* file, struct split* restrict buf) {
+int getSplits(FILE* file, struct split* restrict buf)
+{
     int i = 0; // Must be in this scope to return it
 
     char* time_read_buf;
@@ -24,12 +25,12 @@ int getSplits(FILE* file, struct split* restrict buf) {
         return -1;
 
     while (i < MAX_SPLITS
-            && fgets_no_newline(buf[i].name, sizeof(buf[i].name), file) != NULL
-            && buf[i].name[0]) {
+        && fgets_no_newline(buf[i].name, sizeof(buf[i].name), file) != NULL
+        && buf[i].name[0]) {
         if (file == stdin)
             buf[i].best_time = 0;
         else if (fgets_no_newline(time_read_buf, MAX_TIME_DIGITS, file) == NULL
-                || (buf[i].best_time = atol(time_read_buf)) == 0)
+            || (buf[i].best_time = atol(time_read_buf)) == 0)
             return -1;
 
         i++;
@@ -44,8 +45,9 @@ int getSplits(FILE* file, struct split* restrict buf) {
 /* Saves new splits, prompting for the file to save them in, or updates existing splits
  * to have the new best times. */
 void putSplits(const struct split* restrict splits,
-        size_t split_amount,
-        FILE* restrict split_file) {
+    size_t split_amount,
+    FILE* restrict split_file)
+{
     if (split_file) {
         if (fseek(split_file, 0, SEEK_SET)) {
             perror("fseek");
@@ -58,13 +60,14 @@ void putSplits(const struct split* restrict splits,
     char splits_name[MAX_SPLIT_NAME_LEN];
 
     // Discard sent input
-    struct pollfd stdin_pollfd = {STDIN_FILENO, POLLIN, 0};
+    struct pollfd stdin_pollfd = { STDIN_FILENO, POLLIN, 0 };
     while (poll(&stdin_pollfd, 1, 0)
-            && stdin_pollfd.revents & POLLIN
-            && getc(stdin) != EOF);
+        && stdin_pollfd.revents & POLLIN
+        && getc(stdin) != EOF)
+        ;
 
     puts("Now saving the new splits. "
-            "Please press enter with the program window/console focused.");
+         "Please press enter with the program window/console focused.");
 
     // Wait for send, then discard previously unsent input.
     // This is not the final value for splits_name,
@@ -73,13 +76,13 @@ void putSplits(const struct split* restrict splits,
         goto input_read_err;
 
     puts("Please enter the name you would like to save the splits as.\n"
-            "Or enter \"cancel\" (without quotes) to not save the splits.");
+         "Or enter \"cancel\" (without quotes) to not save the splits.");
     do
         if (fgets_no_newline(splits_name, sizeof(splits_name), stdin) == NULL)
             goto input_read_err;
     while (splits_name[0] == '\0');
 
-    if (strcmp(splits_name, "cancel")) { // "cancel" not read
+    if (strcmp(splits_name, "cancel")) {                 // "cancel" not read
         if (!(split_file = fopen(splits_name, "w+x"))) { // Open file/error handling
             char err_msg[10 + MAX_SPLIT_NAME_LEN] = "fopen on ";
             strcat(err_msg, splits_name);
@@ -106,7 +109,8 @@ input_read_err:
 }
 
 /* Prints the split name, space for the time, & the best time for each split */
-void printSplits(const struct split* restrict splits, int split_amount) {
+void printSplits(const struct split* restrict splits, int split_amount)
+{
     for (int i = 0; i < split_amount; i++) {
         fputs(splits[i].name, stdout);
 
@@ -124,7 +128,8 @@ void printSplits(const struct split* restrict splits, int split_amount) {
 }
 
 /* Prints split name & best time for parse mode */
-void splitParseModePrint(const struct split* restrict split) {
+void splitParseModePrint(const struct split* restrict split)
+{
     puts(split->name);
     fputs("best ", stdout);
     printTime(split->best_time, true);
@@ -132,10 +137,11 @@ void splitParseModePrint(const struct split* restrict split) {
 
 /* Starts the split by updating best time if needed & printing the time */
 void startSplit(struct timeval start_time,
-        pthread_mutex_t* mtx_ptr,
-        bool first_split,
-        bool parse_mode,
-        long* restrict best_split_time) {
+    pthread_mutex_t* mtx_ptr,
+    bool first_split,
+    bool parse_mode,
+    long* restrict best_split_time)
+{
 
     static struct timeval begin_time;
     if (first_split) {

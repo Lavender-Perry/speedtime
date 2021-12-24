@@ -16,7 +16,8 @@
 #include "utils.h"
 
 /* Argument parsing, event loop, etc. */
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     /* Variables that could be set by argument parsing */
     FILE* key_event_files[MAX_KEYBOARDS];
     int keyboard_amount = 0;
@@ -32,50 +33,51 @@ int main(int argc, char** argv) {
     int opt;
     while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1)
         switch (opt) {
-            case 'f': // Set paths to files for monitoring key events
-                keyboard_amount = getKeyEventFiles(key_event_files, optarg);
-                break;
-            case 'k': // Set key to stop the timer
-                set_key(&stop_key, optarg);
-                break;
-            case 'c': // Set key to control the timer
-                set_key(&timerCtrl_key, optarg);
-                break;
-            case 'l': // Load splits from file specified by optarg
-                split_file = fopen(optarg, "r+");
-                if (!split_file) {
-                    perror("Invalid split file given");
-                    return errno;
-                }
-                split_amount = getSplits(split_file, splits);
-                goto split_check;
-            case 's': // Create new splits
-                split_amount = getSplits(stdin, splits);
-split_check:
-                if (split_amount > 0)
-                    run_with_splits = true;
-                else
-                    fputs("No splits could be read\n", stderr);
-                break;
-            case 'p': // Turn on parse mode
-                parse_mode = true;
-                break;
-            case 'i': // Print some info
-                printf("control key: %d\n", timerCtrl_key);
-                printf("stop key: %d\n", stop_key);
-                printf("max splits: %d\n", MAX_SPLITS);
-                printf("max split name length: %d\n", MAX_SPLIT_NAME_LEN);
-                printf("max keyboards: %d\n", MAX_KEYBOARDS);
-                break;
-            case 'e':
-                return 0;
+        case 'f': // Set paths to files for monitoring key events
+            keyboard_amount = getKeyEventFiles(key_event_files, optarg);
+            break;
+        case 'k': // Set key to stop the timer
+            set_key(&stop_key, optarg);
+            break;
+        case 'c': // Set key to control the timer
+            set_key(&timerCtrl_key, optarg);
+            break;
+        case 'l': // Load splits from file specified by optarg
+            split_file = fopen(optarg, "r+");
+            if (!split_file) {
+                perror("Invalid split file given");
+                return errno;
+            }
+            split_amount = getSplits(split_file, splits);
+            goto split_check;
+        case 's': // Create new splits
+            split_amount = getSplits(stdin, splits);
+        split_check:
+            if (split_amount > 0)
+                run_with_splits = true;
+            else
+                fputs("No splits could be read\n", stderr);
+            break;
+        case 'p': // Turn on parse mode
+            parse_mode = true;
+            break;
+        case 'i': // Print some info
+            printf("control key: %d\n", timerCtrl_key);
+            printf("stop key: %d\n", stop_key);
+            printf("max splits: %d\n", MAX_SPLITS);
+            printf("max split name length: %d\n", MAX_SPLIT_NAME_LEN);
+            printf("max keyboards: %d\n", MAX_KEYBOARDS);
+            break;
+        case 'e':
+            return 0;
         }
 
     if (!keyboard_amount
-            && !(keyboard_amount = getKeyEventFiles(key_event_files, NULL))) {
+        && !(keyboard_amount = getKeyEventFiles(key_event_files, NULL))) {
         fputs("Error finding the keyboard event file(s).\n"
-                "Please specify the file(s) by adding the arguments "
-                "\"-f /path/to/event_file,/other/path,etc\"\n", stderr);
+              "Please specify the file(s) by adding the arguments "
+              "\"-f /path/to/event_file,/other/path,etc\"\n",
+            stderr);
         return errno;
     }
 
@@ -112,7 +114,7 @@ split_check:
     pthread_t timer_thread_id;
     pthread_mutex_t timer_mtx;
     pthread_mutex_init(&timer_mtx, NULL);
-    struct thread_args timer_args = {parse_mode, true, &timer_mtx};
+    struct thread_args timer_args = { parse_mode, true, &timer_mtx };
     if (pthread_create(&timer_thread_id, NULL, timer, &timer_args)) {
         fputs("Error creating timer thread\n", stderr);
         goto program_end;
@@ -128,10 +130,10 @@ split_check:
         }
         if (keyPressedResult == timerCtrl_key) {
             startSplit(current_time,
-                    timer_args.mtx_ptr,
-                    false,
-                    parse_mode,
-                    run_with_splits ? &splits[current_split - 1].best_time : NULL);
+                timer_args.mtx_ptr,
+                false,
+                parse_mode,
+                run_with_splits ? &splits[current_split - 1].best_time : NULL);
 
             if (current_split == split_amount || !run_with_splits)
                 break;

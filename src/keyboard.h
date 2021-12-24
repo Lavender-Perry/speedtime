@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <sys/time.h>
 
+#include "compile_settings.h"
+
 int getKeyEventFiles(FILE* buf[MAX_KEYBOARDS], char* optarg);
 void set_key(__u16* restrict key, char* optarg);
 __u16 keyPressed(FILE** files, int file_amount, struct timeval* restrict when);
