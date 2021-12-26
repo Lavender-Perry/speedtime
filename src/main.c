@@ -1,8 +1,8 @@
-#include <asm/types.h>
 #include <errno.h>
 #include <linux/input-event-codes.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
@@ -19,10 +19,10 @@
 int main(int argc, char** argv)
 {
     /* Variables that could be set by argument parsing */
-    FILE* key_event_files[MAX_KEYBOARDS];
-    int keyboard_amount = 0;
-    __u16 stop_key = DEFAULT_STOP_KEY;
-    __u16 timerCtrl_key = DEFAULT_CONTROL_KEY;
+    FILE* key_event_files[MAX_DEVICES];
+    int device_amount = 0;
+    uint16_t stop_key = DEFAULT_STOP_KEY;
+    uint16_t timerCtrl_key = DEFAULT_CONTROL_KEY;
     FILE* split_file = NULL;
     int split_amount = 1;
     struct split splits[MAX_SPLITS];
@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1)
         switch (opt) {
         case 'f': // Set paths to files for monitoring key events
-            keyboard_amount = getKeyEventFiles(key_event_files, optarg);
+            device_amount = getKeyEventFiles(key_event_files, optarg);
             break;
         case 'k': // Set key to stop the timer
             set_key(&stop_key, optarg);
@@ -66,19 +66,27 @@ int main(int argc, char** argv)
             printf("stop key: %d\n", stop_key);
             printf("max splits: %d\n", MAX_SPLITS);
             printf("max split name length: %d\n", MAX_SPLIT_NAME_LEN);
-            printf("max keyboards: %d\n", MAX_KEYBOARDS);
+            printf("max devices: %d\n", MAX_DEVICES);
             break;
         case 'e':
             return 0;
         }
 
-    if (!keyboard_amount
-        && !(keyboard_amount = getKeyEventFiles(key_event_files, NULL))) {
-        fputs("Error finding the keyboard event file(s).\n"
-              "Please specify the file(s) by adding the arguments "
-              "\"-f /path/to/event_file,/other/path,etc\"\n",
-            stderr);
+    if (device_amount == 0
+        && (device_amount = getKeyEventFiles(key_event_files, NULL)) == 0) {
+        fputs("Error finding the device event file(s).\n", stderr);
         return errno;
+    }
+
+    const uint16_t keys[KEY_AMOUNT] = { stop_key, timerCtrl_key };
+    if ((device_amount = filterToSupporting(keys,
+             key_event_files,
+             device_amount))
+        == 0) {
+        fputs("Some keycodes to control the program are impossible to get!\n"
+              "This could be caused by misconfigured event files or key codes.\n",
+            stderr);
+        return 1;
     }
 
     /* Set up for starting the timer */
@@ -98,9 +106,9 @@ int main(int argc, char** argv)
     }
 
     /* Wait until timer control key pressed to start the timer */
-    __u16 keyPressedResult;
+    uint16_t keyPressedResult;
     do {
-        keyPressedResult = keyPressed(key_event_files, keyboard_amount, &start_time);
+        keyPressedResult = keyPressed(key_event_files, device_amount, &start_time);
         if (keyPressedResult == 0)
             goto program_end;
     } while (keyPressedResult != timerCtrl_key);
@@ -123,7 +131,7 @@ int main(int argc, char** argv)
     int current_split = 1;
 
     do {
-        keyPressedResult = keyPressed(key_event_files, keyboard_amount, &current_time);
+        keyPressedResult = keyPressed(key_event_files, device_amount, &current_time);
         if (keyPressedResult == 0) {
             perror("Error getting key press");
             break;
@@ -161,7 +169,7 @@ int main(int argc, char** argv)
     pthread_mutex_destroy(&timer_mtx);
 
 program_end:
-    for (int i = 0; i < keyboard_amount; i++)
+    for (int i = 0; i < device_amount; i++)
         fclose(key_event_files[i]);
 
     if (!parse_mode) {
