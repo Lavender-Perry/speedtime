@@ -1,15 +1,15 @@
 #ifndef COMPILE_SETTINGS_H
 #define COMPILE_SETTINGS_H
 
-/* Getting PATH_MAX macro for MAX_*_PATH_LEN default value,
- * & key code macros for DEFAULT_*_KEY default values. */
+/* Getting PATH_MAX macro for MAX_*_PATH_LEN default value. */
 #ifdef __linux__
-#include <linux/input-event-codes.h>
 #include <linux/limits.h>
 #else
-#include <sys/dev/evdev/input-event-codes.h>
 #include <sys/limits.h>
 #endif // __linux__
+
+/* Getting key code macros for DEFAULT_*_KEY default values. */
+#include <linux/input-event-codes.h>
 
 /* Setting these values:
  *     All max values must be integers greater than 0.
