@@ -18,9 +18,9 @@ void printTime(long tv, bool parse_mode)
 {
     printf("%.2ld:%.2ld.%.2ld", tv / 6000, tv / 100 % 60, tv % 100);
 
-    if (parse_mode)
+    if (parse_mode) {
         puts("");
-    else {
+    } else {
         fputs("\033[8D\033[1B", stdout);
         fflush(stdout);
     }
@@ -37,9 +37,9 @@ void* timer(void* arg_ptr)
         pthread_mutex_lock(args->mtx_ptr);
 
         printf("%.2d:%.2d", minutes, seconds);
-        if (args->parse_mode)
+        if (args->parse_mode) {
             puts("");
-        else {
+        } else {
             fputs("\033[5D", stdout);
             fflush(stdout);
         }
@@ -50,8 +50,9 @@ void* timer(void* arg_ptr)
         if (seconds == 59) {
             seconds = 0;
             minutes++;
-        } else
+        } else {
             seconds++;
+        }
     }
     return NULL;
 }

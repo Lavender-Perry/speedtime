@@ -11,6 +11,6 @@ struct thread_args {
     pthread_mutex_t* mtx_ptr;
 };
 
-char* fgets_no_newline(char* restrict buf, size_t buflen, FILE* restrict fp);
+char* fgetsNew(char* restrict buf, size_t buflen, FILE* file);
 
 #endif // UTILS_H

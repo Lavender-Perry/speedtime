@@ -5,6 +5,5 @@
 -O2
 
 -Wall
--Werror
 -Wextra
 -Wpedantic

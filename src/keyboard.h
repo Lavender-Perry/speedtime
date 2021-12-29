@@ -1,5 +1,5 @@
-#ifndef KEYBOARD_EVENTS_H
-#define KEYBOARD_EVENTS_H
+#ifndef KEYBOARD_H
+#define KEYBOARD_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -16,4 +16,4 @@ int filterToSupporting(const uint16_t keys[KEY_AMOUNT],
 void set_key(uint16_t* restrict key, char* optarg);
 uint16_t keyPressed(FILE** files, int file_amount, struct timeval* restrict when);
 
-#endif // KEYBOARD_EVENTS_H
+#endif // KEYBOARD_H

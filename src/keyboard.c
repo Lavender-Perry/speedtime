@@ -1,6 +1,5 @@
+/* Input handling through evdev */
 #include <dirent.h>
-#include <linux/input-event-codes.h>
-#include <linux/input.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -9,10 +8,16 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
+#ifdef __linux__
+#include <linux/input.h>
+#else
+#include <sys/dev/evdev/input.h>
+#endif // __linux__
+
 #include "compile_settings.h"
 #include "keyboard.h"
 
-#define EVIOCGBIT_SET(bit) (eviocgbit_res[bit / 8] & (1 << bit % 8))
+#define EVIOCGBIT_SET(bit) (eviocgbit_res[(bit) / 8] & (1 << (bit) % 8))
 
 /* Gives to buf the files that support EV_KEY.
  * Uses optarg if it is given, otherwise autodetects the paths.
@@ -27,7 +32,7 @@ int getKeyEventFiles(FILE* buf[MAX_DEVICES], char* optarg)
         const char splitter[] = ",";
         char* strtok_res = strtok(optarg, splitter);
         while (strtok_res != NULL && path_amount < MAX_DEVICES) {
-            strcpy(paths[path_amount], strtok_res);
+            memcpy(paths[path_amount], strtok_res, MAX_DEVICE_PATH_LEN);
             path_amount++;
             strtok_res = strtok(NULL, splitter);
         }
@@ -42,8 +47,10 @@ int getKeyEventFiles(FILE* buf[MAX_DEVICES], char* optarg)
         struct dirent* input_dir_entry;
         while ((input_dir_entry = readdir(input_dir)) != NULL
             && path_amount < MAX_DEVICES) {
-            if (strncmp(input_dir_entry->d_name, "event", 5) == 0) {
-                strcpy(paths[path_amount], input_path);
+            if (strncmp(input_dir_entry->d_name, "event", 5) == 0
+                && strlen(input_dir_entry->d_name)
+                    <= MAX_DEVICE_PATH_LEN - sizeof(input_path)) {
+                memcpy(paths[path_amount], input_path, sizeof(input_path));
                 strcat(paths[path_amount], input_dir_entry->d_name);
                 path_amount++;
             }
@@ -53,18 +60,15 @@ int getKeyEventFiles(FILE* buf[MAX_DEVICES], char* optarg)
     }
 
     /* Open paths */
-    FILE** internal_buf = malloc(path_amount * sizeof(FILE*));
-    if (internal_buf == NULL)
+    FILE** internal_buf = reallocarray(NULL, path_amount, sizeof(FILE*));
+    if (internal_buf == NULL) {
         return 0;
+    }
     for (int i = 0; i < path_amount; i++) {
         internal_buf[i] = fopen(paths[i], "rb");
         if (internal_buf[i] == NULL) {
-            char err_msg[25 + MAX_DEVICE_PATH_LEN] = "fopen on key event file ";
-            strcat(err_msg, paths[i]);
-            perror(err_msg);
-
-            path_amount = i;
-            break;
+            perror(paths[i]);
+            return 0;
         }
     }
 
@@ -89,8 +93,8 @@ int getKeyEventFiles(FILE* buf[MAX_DEVICES], char* optarg)
 }
 
 /* Filters buf to devices that have at least 1 of the keys specified.
- * If there is a key in keys that no devices in buf have or a malloc error,
- * it returns 0, otherwise it returns the new amount of files. */
+ * If there is a key in keys that no devices in buf have, it returns 0,
+ * otherwise it returns the new amount of files. */
 int filterToSupporting(const uint16_t keys[KEY_AMOUNT],
     FILE* buf[MAX_DEVICES],
     int amount)
@@ -103,15 +107,17 @@ int filterToSupporting(const uint16_t keys[KEY_AMOUNT],
                 fileno(buf[i]),
                 EVIOCGBIT(EV_KEY, sizeof(eviocgbit_res)),
                 &eviocgbit_res)
-            < 0)
+            < 0) {
             goto file_loop_end;
+        }
 
         bool file_has_key = false;
-        for (int j = 0; j < KEY_AMOUNT; j++)
+        for (int j = 0; j < KEY_AMOUNT; j++) {
             if (EVIOCGBIT_SET(keys[j])) {
                 file_has_key = true;
                 keys_supported[j] = true;
             }
+        }
         if (file_has_key) {
             buf[file_amount] = buf[i];
             file_amount++;
@@ -122,8 +128,9 @@ int filterToSupporting(const uint16_t keys[KEY_AMOUNT],
     }
 
     bool all_keys_supported = true;
-    for (int i = 0; i < KEY_AMOUNT; i++)
+    for (int i = 0; i < KEY_AMOUNT; i++) {
         all_keys_supported = all_keys_supported && keys_supported[i];
+    }
     return all_keys_supported ? file_amount : 0;
 }
 
@@ -132,10 +139,11 @@ int filterToSupporting(const uint16_t keys[KEY_AMOUNT],
 void set_key(uint16_t* restrict key, char* optarg)
 {
     const uint16_t atoi_res = atoi(optarg);
-    if (atoi_res == 0)
+    if (atoi_res == 0) {
         fputs("Invalid key code specified, using default key\n", stderr);
-    else
+    } else {
         *key = atoi_res;
+    }
 }
 
 /* Checks if key was pressed until one is, & sets when to the time it was pressed.
@@ -153,15 +161,17 @@ uint16_t keyPressed(FILE** files, int file_amount, struct timeval* restrict when
         file_pollfds[i] = (struct pollfd) { fd, POLLIN, 0 };
     }
 
-    while (poll(file_pollfds, file_amount, -1) != -1)
+    while (poll(file_pollfds, file_amount, -1) != -1) {
         for (int i = 0; i < file_amount; i++) {
-            if (file_pollfds[i].revents & POLLERR)
+            if (file_pollfds[i].revents & POLLERR) {
                 return 0;
+            }
 
             if (file_pollfds[i].revents & POLLIN) {
                 struct input_event event;
-                if (fread(&event, sizeof(event), 1, files[i]) != 1)
+                if (fread(&event, sizeof(event), 1, files[i]) != 1) {
                     return 0;
+                }
 
                 if (event.type == EV_KEY && event.value) {
                     *when = event.time;
@@ -169,6 +179,7 @@ uint16_t keyPressed(FILE** files, int file_amount, struct timeval* restrict when
                 }
             }
         }
+    }
 
     return 0;
 }

@@ -1,5 +1,5 @@
+/* Main function */
 #include <errno.h>
-#include <linux/input-event-codes.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -31,7 +31,7 @@ int main(int argc, char** argv)
 
     /* Argument parsing */
     int opt;
-    while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1)
+    while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1) {
         switch (opt) {
         case 'f': // Set paths to files for monitoring key events
             device_amount = getKeyEventFiles(key_event_files, optarg);
@@ -53,10 +53,11 @@ int main(int argc, char** argv)
         case 's': // Create new splits
             split_amount = getSplits(stdin, splits);
         split_check:
-            if (split_amount > 0)
+            if (split_amount > 0) {
                 run_with_splits = true;
-            else
+            } else {
                 fputs("No splits could be read\n", stderr);
+            }
             break;
         case 'p': // Turn on parse mode
             parse_mode = true;
@@ -71,6 +72,7 @@ int main(int argc, char** argv)
         case 'e':
             return 0;
         }
+    }
 
     if (device_amount == 0
         && (device_amount = getKeyEventFiles(key_event_files, NULL)) == 0) {
@@ -78,8 +80,7 @@ int main(int argc, char** argv)
         return errno;
     }
 
-    const uint16_t keys[KEY_AMOUNT] = { stop_key, timerCtrl_key };
-    if ((device_amount = filterToSupporting(keys,
+    if ((device_amount = filterToSupporting((uint16_t[]) { stop_key, timerCtrl_key },
              key_event_files,
              device_amount))
         == 0) {
@@ -101,21 +102,24 @@ int main(int argc, char** argv)
 
         fputs("\033[H\033[J", stdout); // Clear console
 
-        if (run_with_splits)
+        if (run_with_splits) {
             printSplits(splits, split_amount);
+        }
     }
 
     /* Wait until timer control key pressed to start the timer */
     uint16_t keyPressedResult;
     do {
         keyPressedResult = keyPressed(key_event_files, device_amount, &start_time);
-        if (keyPressedResult == 0)
+        if (keyPressedResult == 0) {
             goto program_end;
+        }
     } while (keyPressedResult != timerCtrl_key);
 
     /* Start the timer */
-    if (run_with_splits && parse_mode)
+    if (run_with_splits && parse_mode) {
         splitParseModePrint(&splits[0]);
+    }
 
     startSplit(start_time, NULL, true, parse_mode, NULL);
 
@@ -143,11 +147,13 @@ int main(int argc, char** argv)
                 parse_mode,
                 run_with_splits ? &splits[current_split - 1].best_time : NULL);
 
-            if (current_split == split_amount || !run_with_splits)
+            if (current_split == split_amount || !run_with_splits) {
                 break;
+            }
 
-            if (run_with_splits && parse_mode)
+            if (run_with_splits && parse_mode) {
                 splitParseModePrint(&splits[current_split]);
+            }
 
             current_split++;
         }
@@ -155,22 +161,26 @@ int main(int argc, char** argv)
 
     /* Stop the timer */
     timer_args.run_thread = false;
-    if (pthread_join(timer_thread_id, NULL) == -1)
+    if (pthread_join(timer_thread_id, NULL) == -1) {
         perror("pthread_join");
+    }
 
     printTime(timeDiffToLong(current_time, start_time), parse_mode);
 
-    if (run_with_splits && !parse_mode)
+    if (run_with_splits && !parse_mode) {
         printf("\033[%d;0H", split_amount + 1); // Move to after splits
+    }
 
-    if (errno)
+    if (errno != 0) {
         fputs("The printed time is most likely NOT accurate!\n", stderr);
+    }
 
     pthread_mutex_destroy(&timer_mtx);
 
 program_end:
-    for (int i = 0; i < device_amount; i++)
+    for (int i = 0; i < device_amount; i++) {
         fclose(key_event_files[i]);
+    }
 
     if (!parse_mode) {
         // Allow echoing input again
@@ -178,7 +188,8 @@ program_end:
         tcsetattr(STDIN_FILENO, TCSANOW, &term);
     }
 
-    if (run_with_splits)
+    if (run_with_splits) {
         putSplits(splits, split_amount, split_file);
+    }
     return errno;
 }

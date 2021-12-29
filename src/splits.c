@@ -18,26 +18,20 @@
 int getSplits(FILE* file, struct split* restrict buf)
 {
     int i = 0; // Must be in this scope to return it
-
-    char* time_read_buf;
-    const int MAX_TIME_DIGITS = 20;
-    if (file != stdin && (time_read_buf = malloc(MAX_TIME_DIGITS)) == NULL)
-        return -1;
+    char time_read_buf[20];
 
     while (i < MAX_SPLITS
-        && fgets_no_newline(buf[i].name, sizeof(buf[i].name), file) != NULL
+        && fgetsNew(buf[i].name, sizeof(buf[i].name), file) != NULL
         && buf[i].name[0]) {
-        if (file == stdin)
+        if (file == stdin) {
             buf[i].best_time = 0;
-        else if (fgets_no_newline(time_read_buf, MAX_TIME_DIGITS, file) == NULL
-            || (buf[i].best_time = atol(time_read_buf)) == 0)
+        } else if (fgetsNew(time_read_buf, sizeof(time_read_buf), file) == NULL
+            || (buf[i].best_time = atol(time_read_buf)) == 0) {
             return -1;
+        }
 
         i++;
     }
-
-    if (file != stdin)
-        free(time_read_buf);
 
     return i;
 }
@@ -48,7 +42,7 @@ void putSplits(const struct split* restrict splits,
     size_t split_amount,
     FILE* restrict split_file)
 {
-    if (split_file) {
+    if (split_file != NULL) {
         if (fseek(split_file, 0, SEEK_SET)) {
             perror("fseek");
             return;
@@ -57,14 +51,13 @@ void putSplits(const struct split* restrict splits,
         goto write_splits;
     }
 
-    char splits_name[MAX_SPLIT_NAME_LEN];
+    char splits_name[MAX_SPLITS_PATH_LEN];
 
     // Discard sent input
     struct pollfd stdin_pollfd = { STDIN_FILENO, POLLIN, 0 };
     while (poll(&stdin_pollfd, 1, 0)
         && stdin_pollfd.revents & POLLIN
-        && getc(stdin) != EOF)
-        ;
+        && getc(stdin) != EOF) { }
 
     puts("Now saving the new splits. "
          "Please press enter with the program window/console focused.");
@@ -72,21 +65,21 @@ void putSplits(const struct split* restrict splits,
     // Wait for send, then discard previously unsent input.
     // This is not the final value for splits_name,
     // it is being used as a buffer for discarded input.
-    if (!fgets_no_newline(splits_name, sizeof(splits_name), stdin))
+    if (!fgetsNew(splits_name, sizeof(splits_name), stdin)) {
         goto input_read_err;
+    }
 
     puts("Please enter the name you would like to save the splits as.\n"
          "Or enter \"cancel\" (without quotes) to not save the splits.");
-    do
-        if (fgets_no_newline(splits_name, sizeof(splits_name), stdin) == NULL)
+    do {
+        if (fgetsNew(splits_name, sizeof(splits_name), stdin) == NULL) {
             goto input_read_err;
-    while (splits_name[0] == '\0');
+        }
+    } while (splits_name[0] == '\0');
 
-    if (strcmp(splits_name, "cancel")) {                 // "cancel" not read
-        if (!(split_file = fopen(splits_name, "w+x"))) { // Open file/error handling
-            char err_msg[10 + MAX_SPLIT_NAME_LEN] = "fopen on ";
-            strcat(err_msg, splits_name);
-            perror(err_msg);
+    if (strcmp(splits_name, "cancel")) {                  // "cancel" not read
+        if (!(split_file = fopen(splits_name, "w+xe"))) { // Open file/error handling
+            perror("fopen");
             return;
         }
 
@@ -96,11 +89,12 @@ void putSplits(const struct split* restrict splits,
     return;
 
 write_splits:
-    for (size_t i = 0; i < split_amount; i++)
+    for (size_t i = 0; i < split_amount; i++) {
         if (fprintf(split_file, "%s\n%li\n", splits[i].name, splits[i].best_time) < 0) {
             fputs("Error saving splits.\n", stderr);
             break;
         }
+    }
     fclose(split_file);
     return;
 
@@ -117,10 +111,11 @@ void printSplits(const struct split* restrict splits, int split_amount)
         // Move cursor to make room for time
         printf("\033[%dG", MAX_SPLIT_NAME_LEN + 10);
 
-        if (splits[i].best_time == 0)
+        if (splits[i].best_time == 0) {
             puts("--:--.--");
-        else
+        } else {
             printTime(splits[i].best_time, true);
+        }
     }
 
     // Move cursor to time area of first split
@@ -157,9 +152,10 @@ void startSplit(struct timeval start_time,
             // Time is better than best
             *best_split_time = split_time;
             color_val = 32; // Green
-        } else if (split_time > *best_split_time)
+        } else if (split_time > *best_split_time) {
             // Time is worse than best
             color_val = 31; // Red
+        }
         printf("\033[%dm", color_val);
     }
 
