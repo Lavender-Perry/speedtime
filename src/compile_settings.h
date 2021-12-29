@@ -8,7 +8,7 @@
 #include <linux/limits.h>
 #else
 #include <dev/evdev/input-event-codes.h>
-#include <sys/limits.h>
+#include <sys/syslimits.h>
 #endif // __linux__
 
 /* Setting these values:
