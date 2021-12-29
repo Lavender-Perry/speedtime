@@ -1,9 +1,0 @@
--fomit-frame-pointer
-
--march=native
-
--O2
-
--Wall
--Wextra
--Wpedantic

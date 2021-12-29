@@ -17,10 +17,6 @@ without having the window focused.
 
 ## Building
 
-1.  Install a C compiler & change the Tupfile to build with that C compiler
-2.  Install Tup
-3.  Run `tup` in the directory of this repository.
-
-Builds are only confirmed to work with Clang & GCC on x86-64 Linux with glibc.
+This project uses [Meson](https://mesonbuild.com/) for builds, build it as you would any other Meson project.
 \
-Builds do not work on non-Linux systems.
+Builds are only confirmed to work on x86-64 Linux with glibc.
