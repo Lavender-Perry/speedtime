@@ -1,6 +1,5 @@
 /* Input handling through evdev */
 #include <dirent.h>
-#include <linux/input.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -8,6 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+
+#ifdef __linux__
+#include <linux/input.h>
+#else
+#include <dev/evdev/input.h>
+#endif // __linux__
 
 #include "compile_settings.h"
 #include "keyboard.h"
