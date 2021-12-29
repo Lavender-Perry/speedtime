@@ -167,12 +167,13 @@ int main(int argc, char** argv)
 
     printTime(timeDiffToLong(current_time, start_time), parse_mode);
 
-    if (run_with_splits && !parse_mode) {
-        printf("\033[%d;0H", split_amount + 1); // Move to after splits
-    }
-
-    if (errno != 0) {
-        fputs("The printed time is most likely NOT accurate!\n", stderr);
+    if (!parse_mode) {
+        if (run_with_splits) {
+            printf("\033[%d;0H", split_amount + 1); // Move to after splits
+        }
+        if (errno != 0) {
+            perror("Error occured while running");
+        }
     }
 
     pthread_mutex_destroy(&timer_mtx);
