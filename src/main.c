@@ -167,13 +167,8 @@ int main(int argc, char** argv)
 
     printTime(timeDiffToLong(current_time, start_time), parse_mode);
 
-    if (!parse_mode) {
-        if (run_with_splits) {
-            printf("\033[%d;0H", split_amount + 1); // Move to after splits
-        }
-        if (errno != 0) {
-            perror("Error occured while running");
-        }
+    if (!parse_mode && run_with_splits) {
+        printf("\033[%d;0H", split_amount + 1); // Move to after splits
     }
 
     pthread_mutex_destroy(&timer_mtx);
@@ -192,5 +187,5 @@ program_end:
     if (run_with_splits) {
         putSplits(splits, split_amount, split_file);
     }
-    return errno;
+    return EXIT_SUCCESS;
 }

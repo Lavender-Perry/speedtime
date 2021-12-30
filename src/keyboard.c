@@ -173,7 +173,7 @@ uint16_t keyPressed(FILE** files, int file_amount, struct timeval* restrict when
                     return 0;
                 }
 
-                if (event.type == EV_KEY && event.value) {
+                if (event.type == EV_KEY && event.value != 0) {
                     *when = event.time;
                     return event.code;
                 }

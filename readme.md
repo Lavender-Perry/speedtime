@@ -19,4 +19,6 @@ without having the window focused.
 
 This project uses [Meson](https://mesonbuild.com/) for builds, build it as you would any other Meson project.
 \
-Builds are only confirmed to work on x86-64 Linux with glibc.
+Builds are confirmed to work on the x86-64 architecture, glibc or BSD libc, & Linux or FreeBSD.
+\
+Your OS must use evdev for input (Linux & FreeBSD both do).
