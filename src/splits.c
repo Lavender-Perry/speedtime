@@ -39,8 +39,8 @@ int getSplits(FILE* file, struct split* restrict buf)
 /* Saves new splits, prompting for the file to save them in, or updates existing splits
  * to have the new best times. */
 void putSplits(const struct split* restrict splits,
-    size_t split_amount,
-    FILE* restrict split_file)
+               size_t split_amount,
+               FILE* restrict split_file)
 {
     if (split_file != NULL) {
         if (fseek(split_file, 0, SEEK_SET)) {
@@ -132,10 +132,10 @@ void splitParseModePrint(const struct split* restrict split)
 
 /* Starts the split by updating best time if needed & printing the time */
 void startSplit(struct timeval start_time,
-    pthread_mutex_t* mtx_ptr,
-    bool first_split,
-    bool parse_mode,
-    long* restrict best_split_time)
+                pthread_mutex_t* mtx_ptr,
+                bool first_split,
+                bool parse_mode,
+                long* restrict best_split_time)
 {
 
     static struct timeval begin_time;
@@ -144,7 +144,7 @@ void startSplit(struct timeval start_time,
         return;
     }
 
-    const long split_time = timeDiffToLong(start_time, begin_time);
+    const long split_time = timevalToLong(begin_time) - timevalToLong(start_time);
 
     if (!parse_mode && best_split_time) {
         int color_val = 33; // Yellow

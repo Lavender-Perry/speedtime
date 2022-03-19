@@ -1,3 +1,4 @@
+#include <bits/types/struct_timeval.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -6,11 +7,9 @@
 
 #include "utils.h"
 
-/* Takes two timevals & returns the amount of centiseconds between them */
-long timeDiffToLong(struct timeval time, struct timeval start_time)
-{
-    return (time.tv_sec - start_time.tv_sec) * 100
-        + (time.tv_usec - start_time.tv_usec) / 10000;
+/* Converts a timeval to a long representing amount of centiseconds */
+long timevalToLong(struct timeval time) {
+    return time.tv_sec * 100 + time.tv_usec / 10000;
 }
 
 /* Prints elapsed time */
@@ -31,12 +30,18 @@ void printTime(long tv, bool parse_mode)
 void* timer(void* arg_ptr)
 {
     struct thread_args* args = arg_ptr;
-    int minutes = 0;
-    int seconds = 0;
+    long minutes, seconds;
+    if (args->do_countdown) {
+        minutes = args->countdown_time / 6000;
+        seconds = args->countdown_time % 6000 / 100;
+    } else {
+        minutes = seconds = 0;
+    }
+
     while (args->run_thread) {
         pthread_mutex_lock(args->mtx_ptr);
 
-        printf("%.2d:%.2d", minutes, seconds);
+        printf("%.2ld:%.2ld", minutes, seconds);
         if (args->parse_mode) {
             puts("");
         } else {
@@ -47,6 +52,18 @@ void* timer(void* arg_ptr)
         pthread_mutex_unlock(args->mtx_ptr);
 
         sleep(1);
+        if (args->do_countdown) {
+            if (seconds == 0) {
+                if (minutes == 0) {
+                    break;
+                }
+                seconds = 59;
+                minutes--;
+            } else {
+                seconds--;
+            }
+            continue;
+        }
         if (seconds == 59) {
             seconds = 0;
             minutes++;

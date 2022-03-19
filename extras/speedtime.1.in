@@ -1,4 +1,4 @@
-.TH SPEEDTIME 1 "2021-11-07" "@version@"
+.TH SPEEDTIME 1 "2022-03-19" "@version@"
 
 .SH NAME
 speedtime - a timer.
@@ -27,14 +27,20 @@ Stop the timer when the key corresponding to the given keycode is pressed.
 Start the timer/next split when the key corresponding to the given keycode is pressed.
 .RE
 .PP
+\fB-d\fP \fItime\fP
+.RS 4
+Do a countdown from the given time (formatted [minutes]:[seconds]).
+Can not be used with \fB-s\fP or \fB-l\fP.
+.RE
+.PP
 \fB-l\fP \fIfilename\fP
 .RS 4
-Load splits from the given file.  Can not be used with \fB-s\fP.
+Load splits from the given file.  Can not be used with \fB-s\fP or \fB-d\fP.
 .RE
 .PP
 \fB-s\fP
 .RS 4
-Create new splits.  Can not be used with \fB-l\fP.
+Create new splits.  Can not be used with \fB-l\fP or \fB-d\fP.
 .RE
 .PP
 \fB-p\fP

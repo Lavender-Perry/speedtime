@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 struct thread_args {
+    bool do_countdown;
+    long countdown_time;
     bool parse_mode;
     bool run_thread;
     pthread_mutex_t* mtx_ptr;

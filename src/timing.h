@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <sys/time.h>
 
-long timeDiffToLong(struct timeval time, struct timeval start_time);
+long timevalToLong(struct timeval time);
 void printTime(long tv, bool parse_mode);
 void* timer(void* arg_ptr);
 

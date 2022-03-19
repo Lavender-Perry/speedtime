@@ -1,9 +1,11 @@
 /* Main function */
+#include <bits/types/struct_timeval.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <termios.h>
@@ -19,19 +21,21 @@
 int main(int argc, char** argv)
 {
     /* Variables that could be set by argument parsing */
-    FILE* key_event_files[MAX_DEVICES];
-    int device_amount = 0;
     uint16_t stop_key = DEFAULT_STOP_KEY;
     uint16_t timerCtrl_key = DEFAULT_CONTROL_KEY;
+    int device_amount = 0;
+    FILE* key_event_files[MAX_DEVICES];
     FILE* split_file = NULL;
     int split_amount = 1;
     struct split splits[MAX_SPLITS];
     bool run_with_splits = false;
     bool parse_mode = false;
+    bool do_countdown = false;
+    long countdown_time = 0;
 
     /* Argument parsing */
     int opt;
-    while ((opt = getopt(argc, argv, "f:k:c:l:spie")) != -1) {
+    while ((opt = getopt(argc, argv, "f:k:c:d:l:spie")) != -1) {
         switch (opt) {
         case 'f': // Set paths to files for monitoring key events
             device_amount = getKeyEventFiles(key_event_files, optarg);
@@ -41,6 +45,24 @@ int main(int argc, char** argv)
             break;
         case 'c': // Set key to control the timer
             set_key(&timerCtrl_key, optarg);
+            break;
+        case 'd': // Do countdown
+            do_countdown = true;
+            const char splitter[] = ":";
+            char* strtok_res = strtok(optarg, splitter);
+            long numbers[2] = {-1, -1}; 
+            for (int i = 0; i < 2 && strtok_res != NULL; i++) {
+                numbers[i] = atol(strtok_res);
+                strtok_res = strtok(NULL, splitter);
+            }
+            bool minutes = false;
+            for (int i = 1; i >= 0; i--) {
+                if (numbers[i] != -1) {
+                    countdown_time += minutes ? numbers[i] * 60 : numbers[i];
+                    minutes = true;
+                }
+            }
+            countdown_time *= 100;
             break;
         case 'l': // Load splits from file specified by optarg
             split_file = fopen(optarg, "r+");
@@ -73,6 +95,10 @@ int main(int argc, char** argv)
             return 0;
         }
     }
+    if (do_countdown && run_with_splits) {
+        fputs("Can't run countdown with splits, disregarding splits.\n", stderr);
+        run_with_splits = false;
+    }
 
     if (device_amount == 0
         && (device_amount = getKeyEventFiles(key_event_files, NULL)) == 0) {
@@ -81,13 +107,12 @@ int main(int argc, char** argv)
     }
 
     if ((device_amount = filterToSupporting((uint16_t[]) { stop_key, timerCtrl_key },
-             key_event_files,
-             device_amount))
-        == 0) {
+                                            key_event_files,
+                                            device_amount)) == 0) {
         fputs("Some keycodes to control the program are impossible to get!\n"
               "This could be caused by misconfigured event files or key codes.\n",
-            stderr);
-        return 1;
+              stderr);
+        return EXIT_FAILURE;
     }
 
     /* Set up for starting the timer */
@@ -115,18 +140,26 @@ int main(int argc, char** argv)
             goto program_end;
         }
     } while (keyPressedResult != timerCtrl_key);
-
+    
     /* Start the timer */
     if (run_with_splits && parse_mode) {
         splitParseModePrint(&splits[0]);
     }
 
-    startSplit(start_time, NULL, true, parse_mode, NULL);
+    if (!do_countdown) {
+        startSplit(start_time, NULL, true, parse_mode, NULL);
+    }
 
     pthread_t timer_thread_id;
     pthread_mutex_t timer_mtx;
     pthread_mutex_init(&timer_mtx, NULL);
-    struct thread_args timer_args = { parse_mode, true, &timer_mtx };
+    struct thread_args timer_args = {
+        do_countdown,
+        countdown_time,
+        parse_mode,
+        true,
+        &timer_mtx
+    };
     if (pthread_create(&timer_thread_id, NULL, timer, &timer_args)) {
         fputs("Error creating timer thread\n", stderr);
         goto program_end;
@@ -141,11 +174,13 @@ int main(int argc, char** argv)
             break;
         }
         if (keyPressedResult == timerCtrl_key) {
-            startSplit(current_time,
-                timer_args.mtx_ptr,
-                false,
-                parse_mode,
-                run_with_splits ? &splits[current_split - 1].best_time : NULL);
+            if (!do_countdown) {
+                startSplit(current_time,
+                           timer_args.mtx_ptr,
+                           false,
+                           parse_mode,
+                           run_with_splits ? &splits[current_split - 1].best_time : NULL);
+            }
 
             if (current_split == split_amount || !run_with_splits) {
                 break;
@@ -165,7 +200,9 @@ int main(int argc, char** argv)
         perror("pthread_join");
     }
 
-    printTime(timeDiffToLong(current_time, start_time), parse_mode);
+    if (!do_countdown) {
+        printTime(timevalToLong(current_time) - timevalToLong(start_time), parse_mode);
+    }
 
     if (!parse_mode && run_with_splits) {
         printf("\033[%d;0H", split_amount + 1); // Move to after splits
