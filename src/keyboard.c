@@ -64,32 +64,32 @@ int getKeyEventFiles(FILE* buf[MAX_DEVICES], char* optarg)
     if (internal_buf == NULL) {
         return 0;
     }
+    int open_file_amount = 0;
     for (int i = 0; i < path_amount; i++) {
-        internal_buf[i] = fopen(paths[i], "rb");
-        if (internal_buf[i] == NULL) {
+        internal_buf[open_file_amount] = fopen(paths[i], "rb");
+        if (internal_buf[open_file_amount] == NULL) {
             perror(paths[i]);
-            return 0;
+            continue;
         }
+        open_file_amount++;
     }
 
     /* Discard files that do not support EV_KEY */
-    int file_amount = 0;
-    for (int i = 0; i < path_amount; i++) {
+    int final_file_amount = 0;
+    for (int i = 0; i < open_file_amount; i++) {
         uint8_t eviocgbit_res[EV_KEY / 8 + 1] = { 0 };
         if (ioctl(fileno(internal_buf[i]),
-                EVIOCGBIT(0, sizeof(eviocgbit_res)),
-                &eviocgbit_res)
-                < 0
-            || !EVIOCGBIT_SET(EV_KEY)) {
+                  EVIOCGBIT(0, sizeof(eviocgbit_res)),
+                  &eviocgbit_res) < 0 || !EVIOCGBIT_SET(EV_KEY)) {
             fclose(internal_buf[i]);
             continue;
         }
-        buf[file_amount] = internal_buf[i];
-        file_amount++;
+        buf[final_file_amount] = internal_buf[i];
+        final_file_amount++;
     }
 
     free(internal_buf);
-    return file_amount;
+    return final_file_amount;
 }
 
 /* Filters buf to devices that have at least 1 of the keys specified.
