@@ -1,4 +1,4 @@
-.TH SPEEDTIME 1 "2022-03-19" "@version@"
+.TH SPEEDTIME 1 "2022-03-22" "@version@"
 
 .SH NAME
 speedtime - a timer.
@@ -30,29 +30,35 @@ Start the timer/next split when the key corresponding to the given keycode is pr
 \fB-d\fP \fItime\fP
 .RS 4
 Do a countdown from the given time (formatted [minutes]:[seconds]).
-Can not be used with \fB-s\fP or \fB-l\fP.
+If used, \fB-s\fP and \fB-l\fP are ignored.
 .RE
 .PP
 \fB-l\fP \fIfilename\fP
 .RS 4
-Load splits from the given file.  Can not be used with \fB-s\fP or \fB-d\fP.
+Load splits from the given file.  Should not be used with \fB-s\fP.
 .RE
 .PP
 \fB-s\fP
 .RS 4
-Create new splits.  Can not be used with \fB-l\fP or \fB-d\fP.
+Create new splits.  Should not be used with \fB-l\fP.
 .RE
 .PP
 \fB-p\fP
 .RS 4
 Turns on parse mode.  Useful for programs that need to parse speedtime's output.
-In parse mode all output is printed on seperate lines & there is no ANSI escape codes.
+In parse mode all output is printed on seperate lines and there is no ANSI escape codes.
+.RE
+.PP
+\fB-n\fP
+.RS 4
+Disables controlling through keyboard.
+If used, \fB-f\fP, \fB-k\fP, and \fB-c\fP are ignored.
 .RE
 .PP
 \fB-i\fP
 .RS 4
 Prints basic info about the program settings.
-These are: control key, stop key, max amount of splits, & max split name length.
+These are: control key, stop key, max amount of splits, and max split name length.
 .RE
 .PP
 \fB-e\fP

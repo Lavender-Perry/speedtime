@@ -1,13 +1,13 @@
-/* Main function */
+/* Main function, signal handling */
 #include <bits/types/struct_timeval.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -17,9 +17,18 @@
 #include "timing.h"
 #include "utils.h"
 
+static volatile bool exit_sig = false;
+static void handle_exit_sig() { exit_sig = true; }
+
 /* Argument parsing, event loop, etc. */
 int main(int argc, char** argv)
 {
+    if (signal(SIGINT,  handle_exit_sig) == SIG_ERR ||
+        signal(SIGTERM, handle_exit_sig) == SIG_ERR) {
+        fputs("Error registering signal handler.\n", stderr);
+        return EXIT_FAILURE;
+    }
+    
     /* Variables that could be set by argument parsing */
     uint16_t stop_key = DEFAULT_STOP_KEY;
     uint16_t timerCtrl_key = DEFAULT_CONTROL_KEY;
@@ -28,14 +37,15 @@ int main(int argc, char** argv)
     FILE* split_file = NULL;
     int split_amount = 1;
     struct split splits[MAX_SPLITS];
+    bool do_countdown = false;
     bool run_with_splits = false;
     bool parse_mode = false;
-    bool do_countdown = false;
+    bool keyboard_control = true;
     long countdown_time = 0;
 
     /* Argument parsing */
     int opt;
-    while ((opt = getopt(argc, argv, "f:k:c:d:l:spie")) != -1) {
+    while ((opt = getopt(argc, argv, "f:k:c:d:l:spnie")) != -1) {
         switch (opt) {
         case 'f': // Set paths to files for monitoring key events
             device_amount = getKeyEventFiles(key_event_files, optarg);
@@ -84,6 +94,9 @@ int main(int argc, char** argv)
         case 'p': // Turn on parse mode
             parse_mode = true;
             break;
+        case 'n': // Disable keyboard control
+            keyboard_control = false;
+            break;
         case 'i': // Print some info
             printf("control key: %d\n", timerCtrl_key);
             printf("stop key: %d\n", stop_key);
@@ -92,7 +105,7 @@ int main(int argc, char** argv)
             printf("max devices: %d\n", MAX_DEVICES);
             break;
         case 'e':
-            return 0;
+            return EXIT_SUCCESS;
         }
     }
     if (do_countdown && run_with_splits) {
@@ -100,13 +113,14 @@ int main(int argc, char** argv)
         run_with_splits = false;
     }
 
-    if (device_amount == 0
-        && (device_amount = getKeyEventFiles(key_event_files, NULL)) == 0) {
+    if (keyboard_control && device_amount == 0 &&
+        (device_amount = getKeyEventFiles(key_event_files, NULL)) == 0) {
         fputs("Error finding the device event file(s).\n", stderr);
         return errno;
     }
 
-    if ((device_amount = filterToSupporting((uint16_t[]) { stop_key, timerCtrl_key },
+    if (keyboard_control &&
+        (device_amount = filterToSupporting((uint16_t[]) { stop_key, timerCtrl_key },
                                             key_event_files,
                                             device_amount)) == 0) {
         fputs("Some keycodes to control the program are impossible to get!\n"
@@ -134,12 +148,14 @@ int main(int argc, char** argv)
 
     /* Wait until timer control key pressed to start the timer */
     uint16_t keyPressedResult;
-    do {
-        keyPressedResult = keyPressed(key_event_files, device_amount, &start_time);
-        if (keyPressedResult == 0) {
-            goto program_end;
-        }
-    } while (keyPressedResult != timerCtrl_key);
+    if (keyboard_control) {
+        do {
+            keyPressedResult = keyPressed(key_event_files, device_amount, &start_time);
+            if (exit_sig || keyPressedResult == 0) {
+                goto program_end;
+            }
+        } while (keyPressedResult != timerCtrl_key);
+    }
     
     /* Start the timer */
     if (run_with_splits && parse_mode) {
@@ -167,10 +183,15 @@ int main(int argc, char** argv)
 
     int current_split = 1;
 
-    do {
+    while (!exit_sig) {
         keyPressedResult = keyPressed(key_event_files, device_amount, &current_time);
         if (keyPressedResult == 0) {
-            perror("Error getting key press");
+            if (errno != EINTR) {
+                perror("Error getting key press");
+            }
+            break;
+        }
+        if (keyPressedResult == stop_key) {
             break;
         }
         if (keyPressedResult == timerCtrl_key) {
@@ -186,13 +207,14 @@ int main(int argc, char** argv)
                 break;
             }
 
-            if (run_with_splits && parse_mode) {
-                splitParseModePrint(&splits[current_split]);
+            if (run_with_splits) {
+                if (parse_mode) {
+                    splitParseModePrint(&splits[current_split]);
+                }
+                current_split++;
             }
-
-            current_split++;
         }
-    } while (keyPressedResult != stop_key);
+    }
 
     /* Stop the timer */
     timer_args.run_thread = false;
@@ -200,7 +222,7 @@ int main(int argc, char** argv)
         perror("pthread_join");
     }
 
-    if (!do_countdown) {
+    if (!do_countdown && !exit_sig) {
         printTime(timevalToLong(current_time) - timevalToLong(start_time), parse_mode);
     }
 
