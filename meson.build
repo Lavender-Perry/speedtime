@@ -1,5 +1,5 @@
 project(
-  'speedtime', 'c', license: 'CNPL-NAv7+', version: '2021.12.23',
+  'speedtime', 'c', license: 'CNPL-NAv7+', version: '2022.04.03',
   default_options: ['c_std=gnu11', 'buildtype=release', 'warning_level=3'])
 
 add_global_arguments('-fomit-frame-pointer', '-march=native', language: 'c')
